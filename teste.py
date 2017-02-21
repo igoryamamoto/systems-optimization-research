@@ -5,6 +5,7 @@ Created on Tue Feb 21 14:40:26 2017
 @author: Ígor Yamamoto
 """
 
+# Example from "http://cvxopt.org/examples/tutorial/qp.html"
 from cvxopt import matrix, solvers
 Q = 2*matrix([ [2, .5], [.5, 1] ])
 p = matrix([1.0, 1.0])
