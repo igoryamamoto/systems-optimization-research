@@ -5,6 +5,7 @@ Created on Thu Feb 23 10:58:03 2017
 @author: Ígor Yamamoto
 """
 import numpy as np
+import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 
 def create_matrix_G(g, p, m):
@@ -23,7 +24,7 @@ nu = 2
 # number of outputs
 ny = 2
 
-# vectors with step responses till t=15s w/ T = 1s
+#%% vectors with step responses till t=15s w/ T = 1s
 # gij -> output i relative to input j
 # tf = -0.19/s
 g11 = np.array([
@@ -97,7 +98,7 @@ g22 = np.array([
     3.29000000000000,
     3.52500000000000
 ])
-# Create Dynamic Matrix
+#%% Create Dynamic Matrix
 G11 = create_matrix_G(g11,p,m)
 G12 = create_matrix_G(g12,p,m)
 G21 = create_matrix_G(g21,p,m)
@@ -108,15 +109,28 @@ G = np.vstack((G1,G2))
 # Free respose
 f = np.zeros(p*ny)
 # References
-w = np.array([1,1,1,1,1,1.5,1.5,1.5,1.5,1.5,2,2,2,2,2]*ny)
+w = np.array([1]*p*ny)
 # weights
 Q = np.diag(np.ones(p*ny))
 R = np.diag([10**-2]*m*nu)
-# solver inputs
+#%% solver inputs
 H = matrix((2*np.transpose(G).dot(Q).dot(G)+R).tolist())
 q = matrix((2*np.transpose(G).dot(Q).dot(f-w)).tolist())
 A = matrix(np.diag(np.ones(nu*m)).tolist()+np.diag(-1*np.ones(nu*m)).tolist())
 b = matrix([0.2]*2*nu*m)
 # solve
 sol = solvers.qp(P=H,q=q,G=A.T,h=b)
-print(sol['x'])
+sol_x = sol['x']
+print(sol_x)
+#%%
+du1 = np.array([sol_x[i] for i in range(m)])
+du2 = np.array([sol_x[i+m] for i in range(m)])
+x11 = G11.dot(du1)
+x12 = G12.dot(du2)
+x21 = G21.dot(du1)
+x22 = G22.dot(du2)
+plt.plot(x11)
+plt.plot(x12)
+plt.plot(x21)
+plt.plot(x22)
+plt.legend(['x11','x12','x21','x22'])
