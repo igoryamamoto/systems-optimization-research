@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 23 10:58:03 2017
+Created on Thu Mar 02 10:55:00 2017
 
 @author: Ígor Yamamoto
 """
@@ -78,4 +78,4 @@ x21 = G21.dot(du1)
 x22 = G22.dot(du2)
 plt.plot(x11+x12)
 plt.plot(x21+x22)
-plt.legend(['x1','x2'])
+plt.legend(['y1','y2'])
