@@ -18,7 +18,7 @@ def create_matrix_G(g, p, m):
 # prediction horizon
 p = 15
 # control horizon
-m = 5
+m = 4
 # number of inputs
 nu = 2
 # number of outputs
@@ -49,14 +49,14 @@ g12 = g21 = g22 = g11
 G11 = create_matrix_G(g11,p,m)
 G12 = create_matrix_G(g12,p,m)
 G21 = create_matrix_G(g21,p,m)
-G22 = create_matrix_G(g22,p,m)   
+G22 = create_matrix_G(g22,p,m)
 G1 = np.hstack((G11,G12))
 G2 = np.hstack((G21,G22))
 G = np.vstack((G1,G2))
 # Free respose
 f = np.zeros(p*ny)
 # References
-w = np.array([2]*p+[2]*p)
+w = np.array([1]*p+[1]*p)
 # weights
 Q = np.diag(np.ones(p*ny))
 R = np.diag([10**-2]*m*nu)
@@ -76,6 +76,18 @@ x11 = G11.dot(du1)
 x12 = G12.dot(du2)
 x21 = G21.dot(du1)
 x22 = G22.dot(du2)
-plt.plot(x11+x12)
-plt.plot(x21+x22)
-plt.legend(['y1','y2'])
+y1 = np.append(np.zeros(1),x11+x12)
+y2 = np.append(np.zeros(1),x21+x22)
+u1 = u2 = np.array([0])
+for i in range(m):
+    u1 = np.append(u1,u1[i]+du1[i])
+    u2 = np.append(u2,u2[i]+du2[i])
+u1 = np.append(u1,[u1[m]]*(p-m))
+u2 = np.append(u2,[u2[m]]*(p-m))
+plt.plot([1]*p,':')
+plt.plot(y1)
+plt.plot(y2)
+plt.plot(u1,'--')
+plt.plot(u2,'--')
+plt.legend(['Reference','y1','y2','u1','u2'])
+plt.xlabel('sample time (k)')
