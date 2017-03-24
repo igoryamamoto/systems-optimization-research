@@ -49,15 +49,14 @@ G2 = np.hstack((G21,G22))
 G = np.vstack((G1,G2))
 
 #%% Initialization
-
 # Number of sample points to simulate
-num_samples = 200
+num_samples = 150
 # References
 w1 = np.array([1]*(num_samples+p))
 w2 = np.array([1]*(num_samples+p))
 # weights
 Q = np.diag(np.ones(p*ny))
-R = np.diag([10**-2]*m*nu)
+R = np.diag([10**1]*m*nu)
 # output and input vectors to store computed values
 y11 = y12 = y21 = y22 = u1 = u2 = np.zeros(num_samples+1)
 du1 = du2 = np.zeros(num_samples)
@@ -68,6 +67,7 @@ du1_f = du2_f = np.zeros(N)
 # Free respose
 f = np.zeros(p*ny)
 dumax = 0.2
+
 #%% Control Loop
 for i in range(num_samples):
     # Process Output (equal model in this case)
@@ -99,8 +99,8 @@ for i in range(num_samples):
     u1[i+1] = u1[i] + du1[i]
     u2[i+1] = u2[i] + du2[i]
     
-    du1_f = np.append(dup[0], du1_f[:-1])
-    du2_f = np.append(dup[m], du2_f[:-1])  
+    du1_f = np.append(du1[i], du1_f[:-1])
+    du2_f = np.append(du2[i], du2_f[:-1])  
     
 #%% Plot
 #du1 = np.array(du[0:m])
