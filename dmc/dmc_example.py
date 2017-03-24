@@ -67,11 +67,11 @@ A = matrix(np.diag(np.ones(nu*m)).tolist()+np.diag(-1*np.ones(nu*m)).tolist())
 b = matrix([0.2]*2*nu*m)
 # solve
 sol = solvers.qp(P=H,q=q,G=A.T,h=b)
-du = list(sol['x'])
-print(du)
+sol_x = sol['x']
+print(sol_x)
 #%%
-du1 = np.array(du[0:m])
-du2 = np.array(du[m:])
+du1 = np.array([sol_x[i] for i in range(m)])
+du2 = np.array([sol_x[i+m] for i in range(m)])
 x11 = G11.dot(du1)
 x12 = G12.dot(du2)
 x21 = G21.dot(du1)
