@@ -59,7 +59,7 @@ w2 = np.array([1]*(num_samples+p))
 Q = np.diag(np.ones(p*ny))
 R = np.diag([10**-2]*m*nu)
 # output and input vectors to store computed values
-y1 = y2 = u1 = u2 = np.zeros(num_samples+1)
+y11 = y12 = y21 = y22 = u1 = u2 = np.zeros(num_samples+1)
 du1 = du2 = np.zeros(num_samples)
 N=150
 vect_g11 = vect_g12 = vect_g21 = vect_g22 = np.zeros(N)
@@ -71,16 +71,18 @@ dumax = 0.2
 #%% Control Loop
 for i in range(num_samples):
     # Process Output (equal model in this case)
-    y1[i+1] = g11[0]*du1[0] + g21[0]*du1[0] + f[0]
-    y2[i+1] = g12[0]*du2[0] + g22[0]*du2[0] + f[p]
+    y11[i+1] = y11[i] - 0.19*u1[i]
+    y12[i+1] = 0.95*y12[i] - 0.08498*u2[i]
+    y21[i+1] = 0.969*y21[i] - 0.02362*u1[i]
+    y22[i+1] = y22[i] + 0.235*u2[i]
     for k in range(p):
         for j in range(N):
             vect_g11[j] = g11[k+j]-g11[j]
             vect_g12[j] = g12[k+j]-g12[j]
             vect_g21[j] = g21[k+j]-g21[j]
             vect_g22[j] = g22[k+j]-g22[j]
-        f[k] = y1[i] + vect_g11.dot(du1_f) + vect_g21.dot(du1_f)
-        f[p+k] = y2[i] + vect_g21.dot(du2_f) + vect_g22.dot(du2_f)
+        f[k] = y11[i+1] + y12[i+1] + vect_g11.dot(du1_f) + vect_g12.dot(du2_f)
+        f[p+k] = y21[i+1] + y22[i+1] + vect_g21.dot(du1_f) + vect_g22.dot(du2_f)
     # Select references for the current horizon
     w = np.append(w1[i:i+p], w2[i:i+p])
     # solver inputs
@@ -117,8 +119,8 @@ for i in range(num_samples):
 #u2 = np.append(u2,[u2[m]]*(p-m))
 plt.clf()
 plt.plot(w1[:num_samples+1],':', label='Reference')
-plt.plot(y1, label='y1')
-plt.plot(y2, label='y2')
+plt.plot(y11+y12, label='y1')
+plt.plot(y21+y22, label='y2')
 plt.plot(u1,'--', label='u1')
 plt.plot(u2,'--', label='u2')
 plt.legend(loc=4)
