@@ -16,7 +16,7 @@ def create_matrix_G(g, p, m):
     return np.resize(G,(p,m))
 
 #%% Simulation Parameters
-t_sim = 200
+t_sim = 100
 
 #%% Controller Parameters
 p = 15    # prediction horizon 
@@ -24,7 +24,7 @@ m = 3     # control horizon
 nu = 2    # number of inputs
 ny = 2    # number of outputs
 Q = np.eye(p*ny)
-R = 10**-2*np.eye(m*nu)
+R = 10**1*np.eye(m*nu)
 du_max = 0.2
 du_min = -0.2
 
@@ -50,27 +50,37 @@ G2 = np.hstack((G21,G22))
 G = np.vstack((G1,G2))
 
 #%% Coefficients
-
+dm = 0
+dr = 0
 # Process Model
 Bm11 = np.array([-0.19])
-Am11 = np.array([1 -1])
+Am11 = np.array([1, -1])
+Am11_til = np.array([1, 0, -1])
 Bm12 = np.array([-0.08498])
-Am12 = np.array([1 -0.95])
+Am12 = np.array([1, -0.95])
+Am12_til = np.array([1, 0, -0.95])
 Bm21 = np.array([-0.02362])
-Am21 = np.array([1 -0.969])
+Am21 = np.array([1, -0.969])
+Am21_til = np.array([1, 0, -0.969])
 Bm22 = np.array([0.235])
-Am22 = np.array([1 -1])
+Am22 = np.array([1, -1])
+Am22_til = np.array([1, 0, -1])
 
 # Real Process
 Br11 = np.array([-0.19])
-Ar11 = np.array([1 -1])
+Ar11 = np.array([1, -1])
 Br12 = np.array([-0.08498])
-Ar12 = np.array([1 -0.95])
+Ar12 = np.array([1, -0.95])
 Br21 = np.array([-0.02362])
-Ar21 = np.array([1 -0.969])
+Ar21 = np.array([1, -0.969])
 Br22 = np.array([0.235])
-Ar22 = np.array([1 -1])
+Ar22 = np.array([1, -1])
 
+na11 = len(Ar11)
+na12 = len(Ar12)
+na21 = len(Ar21)
+na22 = len(Ar22)
+nb = 1
 #%% Reference and Disturbance Signals
 w1 = np.array([1]*(t_sim+p))
 w2 = np.array([1]*(t_sim+p))
@@ -78,23 +88,44 @@ w2 = np.array([1]*(t_sim+p))
 #%% Initialization
 y11 = y12 = y21 = y22 = u1 = u2 = np.zeros(t_sim+1)
 du1 = du2 = np.zeros(t_sim+1)
-y11_past = np.zeros(len(Ar11))
-y12_past = np.zeros(len(Ar12))
-y21_past = np.zeros(len(Ar21))
-y22_past = np.zeros(len(Ar22))
-u1_past = np.zeros(1)
-u2_past = np.zeros(1)
+y11_past = np.zeros(na11)
+y12_past = np.zeros(na12)
+y21_past = np.zeros(na21)
+y22_past = np.zeros(na22)
+u1_past = np.zeros(nb)
+u2_past = np.zeros(nb)
+y11_f = y12_f = y21_f = y22_f = np.zeros(p)
 
 #%% Control Loop
 for k in range(1,t_sim+1):
-    y11[k] = Ar11.dot(y11_past) + Br11.dot(u1_past)
-    y12[k] = Ar12.dot(y12_past) + Br12.dot(u2_past)
-    y21[k] = Ar21.dot(y21_past) + Br21.dot(u1_past)
-    y22[k] = Ar22.dot(y22_past) + Br22.dot(u2_past)
+    y11[k] = Ar11[1:].dot(y11_past[:-1]) + Br11.dot(u1_past)
+    y12[k] = Ar12[1:].dot(y12_past[:-1]) + Br12.dot(u2_past)
+    y21[k] = Ar21[1:].dot(y21_past[:-1]) + Br21.dot(u1_past)
+    y22[k] = Ar22[1:].dot(y22_past[:-1]) + Br22.dot(u2_past)
     
     # Free Response
-    #??
-    f = np.zeros(ny*p)
+    du1_f = np.array(du1[k-1])   
+    du2_f = np.array(du2[k-1])
+    y11_aux = y11_past
+    y12_aux = y12_past
+    y21_aux = y21_past
+    y22_aux = y22_past
+    for j in range(p):
+        if j <= dm:
+            du1_f = np.array(du1[k])
+            du2_f = np.array(du2[k])
+        else:
+            du1_f = du2_f = np.array(0)
+        y11_f[j] = -y11_aux.dot(Am11_til[1:]) + du1_f.dot(Bm11)
+        y12_f[j] = -y12_aux.dot(Am12_til[1:]) + du2_f.dot(Bm12)
+        y21_f[j] = -y21_aux.dot(Am21_til[1:]) + du1_f.dot(Bm21)
+        y22_f[j] = -y22_aux.dot(Am22_til[1:]) + du2_f.dot(Bm22)
+        y11_aux = np.append(y11_f[j], y11_aux[:-1])
+        y12_aux = np.append(y12_f[j], y12_aux[:-1])
+        y21_aux = np.append(y21_f[j], y21_aux[:-1])
+        y22_aux = np.append(y22_f[j], y22_aux[:-1])
+    f = np.append(y11_f+y12_f, y21_f+y22_f) 
+        
     # Select references for the current horizon
     w = np.append(w1[k:k+p], w2[k:k+p])
     # Solver Inputs
@@ -118,22 +149,10 @@ for k in range(1,t_sim+1):
 
 
 #%% Teste
-x11 = G11.dot(dup[:m])
-x12 = G12.dot(dup[m:])
-x21 = G21.dot(dup[:m])
-x22 = G22.dot(dup[m:])
-y1 = np.append(np.zeros(1),x11+x12)
-y2 = np.append(np.zeros(1),x21+x22)
-u1 = u2 = np.array([0])
-for i in range(m):
-    u1 = np.append(u1,u1[i]+dup[i])
-    u2 = np.append(u2,u2[i]+dup[m+i])
-u1 = np.append(u1,[u1[m]]*(p-m))
-u2 = np.append(u2,[u2[m]]*(p-m))
 plt.clf()
 plt.plot([1]*p,':', label='Reference')
-plt.plot(y1, label='y1')
-plt.plot(y2, label='y2')
+plt.plot(y11+y12, label='y1')
+plt.plot(y21+y22, label='y2')
 plt.plot(u1,'--', label='u1')
 plt.plot(u2,'--', label='u2')
 plt.legend(loc=4)
