@@ -98,10 +98,10 @@ y11_f = y12_f = y21_f = y22_f = np.zeros(p)
 
 #%% Control Loop
 for k in range(1,t_sim+1):
-    y11[k] = Ar11[1:].dot(y11_past[:-1]) + Br11.dot(u1_past)
-    y12[k] = Ar12[1:].dot(y12_past[:-1]) + Br12.dot(u2_past)
-    y21[k] = Ar21[1:].dot(y21_past[:-1]) + Br21.dot(u1_past)
-    y22[k] = Ar22[1:].dot(y22_past[:-1]) + Br22.dot(u2_past)
+    y11[k] = -Ar11[1:].dot(y11_past[:-1]) + Br11.dot(u1_past)
+    y12[k] = -Ar12[1:].dot(y12_past[:-1]) + Br12.dot(u2_past)
+    y21[k] = -Ar21[1:].dot(y21_past[:-1]) + Br21.dot(u1_past)
+    y22[k] = -Ar22[1:].dot(y22_past[:-1]) + Br22.dot(u2_past)
     
     # Free Response
     du1_f = np.array(du1[k-1])   
@@ -129,8 +129,8 @@ for k in range(1,t_sim+1):
     # Select references for the current horizon
     w = np.append(w1[k:k+p], w2[k:k+p])
     # Solver Inputs
-    H = matrix((2*(np.transpose(G).dot(Q).dot(G)+R)).tolist())
-    q = matrix((2*np.transpose(G).dot(Q).dot(f-w)).tolist())
+    H = matrix((2*(G.T.dot(Q).dot(G)+R)).tolist())
+    q = matrix((2*G.T.dot(Q).dot(f-w)).tolist())
     A = matrix(np.hstack((np.eye(nu*m),-1*np.eye(nu*m))).tolist())
     b = matrix([du_max]*nu*m+[-du_min]*nu*m)
     # Solve
