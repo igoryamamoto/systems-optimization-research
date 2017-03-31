@@ -55,16 +55,20 @@ dr = 0
 # Process Model
 Bm11 = np.array([-0.19])
 Am11 = np.array([1, -1])
-Am11_til = np.array([1, 0, -1])
+#Am11_til = np.array([1, 0, -1])
+Am11_til = np.convolve(Am11, [1,-1])
 Bm12 = np.array([-0.08498])
 Am12 = np.array([1, -0.95])
-Am12_til = np.array([1, 0, -0.95])
+#Am12_til = np.array([1, 0, -0.95])
+Am12_til = np.convolve(Am12, [1,-1])
 Bm21 = np.array([-0.02362])
 Am21 = np.array([1, -0.969])
-Am21_til = np.array([1, 0, -0.969])
+#Am21_til = np.array([1, 0, -0.969])
+Am21_til = np.convolve(Am21, [1,-1])
 Bm22 = np.array([0.235])
 Am22 = np.array([1, -1])
-Am22_til = np.array([1, 0, -1])
+#Am22_til = np.array([1, 0, -1])
+Am22_til = np.convolve(Am22, [1,-1])
 
 # Real Process
 Br11 = np.array([-0.19])
@@ -86,15 +90,24 @@ w1 = np.array([1]*(t_sim+p))
 w2 = np.array([1]*(t_sim+p))
 
 #%% Initialization
-y11 = y12 = y21 = y22 = u1 = u2 = np.zeros(t_sim+1)
-du1 = du2 = np.zeros(t_sim+1)
+y11 = np.zeros(t_sim+1)
+y12 = np.zeros(t_sim+1)
+y21 = np.zeros(t_sim+1)
+y22 = np.zeros(t_sim+1)
+u1 = np.zeros(t_sim+1)
+u2 = np.zeros(t_sim+1)
+du1 = np.zeros(t_sim+1)
+du2 = np.zeros(t_sim+1)
 y11_past = np.zeros(na11)
 y12_past = np.zeros(na12)
 y21_past = np.zeros(na21)
 y22_past = np.zeros(na22)
 u1_past = np.zeros(nb)
 u2_past = np.zeros(nb)
-y11_f = y12_f = y21_f = y22_f = np.zeros(p)
+y11_f = np.zeros(p)
+y12_f = np.zeros(p)
+y21_f = np.zeros(p)
+y22_f = np.zeros(p)
 
 #%% Control Loop
 for k in range(1,t_sim+1):
@@ -136,12 +149,15 @@ for k in range(1,t_sim+1):
     # Solve
     sol = solvers.qp(P=H,q=q,G=A,h=b)
     dup = list(sol['x'])
+    #dup = np.linalg.inv(G.T.dot(Q).dot(G)+R).dot(G.T).dot(Q).dot(w-f)
     
     du1[k] = dup[0]
     du2[k] = dup[m]
     u1[k] = u1[k-1] + du1[k]
     u2[k] = u2[k-1] + du2[k]
     
+    u1_past = np.append(u1[k],u1_past[:-1])
+    u2_past = np.append(u2[k],u2_past[:-1])
     y11_past = np.append(y11[k],y11_past[:-1])
     y12_past = np.append(y12[k],y12_past[:-1])
     y21_past = np.append(y21[k],y21_past[:-1])
@@ -150,7 +166,7 @@ for k in range(1,t_sim+1):
 
 #%% Teste
 plt.clf()
-plt.plot([1]*p,':', label='Reference')
+plt.plot([1]*(t_sim+1),':', label='Reference')
 plt.plot(y11+y12, label='y1')
 plt.plot(y21+y22, label='y2')
 plt.plot(u1,'--', label='u1')
