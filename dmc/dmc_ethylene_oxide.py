@@ -114,7 +114,7 @@ w = np.array([1]*p+[1]*p)
 Q = np.diag(np.ones(p*ny))
 R = np.diag([10**-2]*m*nu)
 #%% solver inputs
-H = matrix((2*np.transpose(G).dot(Q).dot(G)+R).tolist())
+H = matrix((2*(np.transpose(G).dot(Q).dot(G)+R)).tolist())
 q = matrix((2*np.transpose(G).dot(Q).dot(f-w)).tolist())
 A = matrix(np.diag(np.ones(nu*m)).tolist()+np.diag(-1*np.ones(nu*m)).tolist())
 b = matrix([0.2]*2*nu*m)
