@@ -6,6 +6,7 @@ Created on Thu Mar 31 17:03 2017
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.signal as signal
 from cvxopt import matrix, solvers
 
 def create_matrix_G(g, p, m):
@@ -17,7 +18,6 @@ def create_matrix_G(g, p, m):
 
 #%% Simulation Parameters
 t_sim = 100
-solvers.options['show_progress'] = False
 
 #%% Controller Parameters
 p = 15    # prediction horizon
@@ -30,9 +30,16 @@ du_max = 0.2
 du_min = -0.2
 
 #%% Create Matrix G
+# tf = -1.7/(19.5*s+1)
+h11 = signal.TransferFunction([-0.19],[1, 0])
+h21 = signal.TransferFunction([-1.7],[19.5, 0])
+h12 = signal.TransferFunction([-0.763],[31.8, 1])
+h22 = signal.TransferFunction([0.235],[1, 0])
+
+#%%
 g11 = open('g11','r').read().splitlines()
 g11 = np.array(list(map(float,g11)))
-# tf = -1.7/(19.5*s+1)
+
 g12 = open('g12','r').read().splitlines()
 g12 = np.array(list(map(float,g12)))
 # tf = -0.763/(31.8*s+1)
