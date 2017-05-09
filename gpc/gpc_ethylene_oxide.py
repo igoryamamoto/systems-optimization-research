@@ -167,7 +167,7 @@ for k in range(1,t_sim+1):
 
 #%% Teste
 plt.clf()
-plt.plot([1]*(t_sim+1),':', label='Reference')
+plt.plot([1]*(t_sim+1),':', label='Target')
 plt.plot(y11+y12, label='y1')
 plt.plot(y21+y22, label='y2')
 plt.plot(u1,'--', label='u1')
