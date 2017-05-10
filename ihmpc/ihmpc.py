@@ -7,7 +7,47 @@ Created on Wed Apr 26 12:07:03 2017
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
-import ihmpctools as ihmpc
+from scipy import signal
+
+def get_coeff(b,a,na):
+    # multiply by 1/s (step)
+    a = np.append(a, 0)
+    # do partial fraction expansion
+    r,p,k = signal.residue(b,a)
+    # r: Residues
+    # p: Poles
+    # k: Coefficients of the direct polynomial term
+
+    d_s = np.array([])
+    #d_d = np.array([])
+    d_d = np.zeros(na)
+    d_i = np.array([])
+    poles = np.array([])
+    integrador = 0
+    i = 0;
+
+    for i in range(np.size(p)):
+        if (p[i] == 0):
+            if (integrador):
+                d_i = np.append(d_i, r[i])
+            else:
+                d_s = np.append(d_s, r[i])
+                integrador += 1
+        else:
+            d_d[i] = r[i]
+            poles = np.append(poles, p[i])
+            i += 1
+
+    if (d_i.size == 0):
+        d_i = np.append(d_i, 0)
+
+    return d_s, d_d, d_i, poles
+
+def create_J(nu, na):
+    J = np.zeros((nu*na, nu))
+    for col in range(nu):
+        J[col*na:col*na+na, col] = np.ones(na)
+    return J
 
 #%% Transfer Functions Gij (output i/ input j)
 
@@ -38,19 +78,29 @@ na = 1 # max order of Gij
 nd = ny*nu*na
 
 # Obtain coefficients of partial fractions of Gij/s
-d0_11, dd_11, di_11 = ihmpc.get_coeff(b11, a11)
-d0_12, dd_12, di_12 = ihmpc.get_coeff(b12, a12)
-d0_21, dd_21, di_21 = ihmpc.get_coeff(b21, a21)
-d0_22, dd_22, di_22 = ihmpc.get_coeff(b22, a22)
+d0_11, dd_11, di_11, r_11 = get_coeff(b11, a11,na)
+d0_12, dd_12, di_12, r_12 = get_coeff(b12, a12,na)
+d0_21, dd_21, di_21, r_21 = get_coeff(b21, a21,na)
+d0_22, dd_22, di_22, r_22 = get_coeff(b22, a22,na)
 
-#TODO: Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
+# Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
 D0 = np.vstack((np.hstack((d0_11, d0_12)),
                np.hstack((d0_21, d0_22))))
-Di =
-Dd =
+Di = np.vstack((np.hstack((di_11, di_12)),
+               np.hstack((di_21, di_22))))
+Dd = np.diag(dd_11.tolist() + dd_11.tolist() + dd_21.tolist() + dd_22.tolist());
+
 #TODO: Define matrices F[ndxnd], J[nu.naxnu], N[ndxnu]
+J = create_J(nu, na)
+#FIXME: na changes according to Gij
+
+#N =
+
+F = np.diag(np.exp(r_11.tolist() + r_12.tolist() + r_21.tolist() + r_22.tolist()))
 
 #TODO: Define matrix Wn[ndxnd.m] from F
+
+
 
 #TODO: Define matrix Z[?] from Dd,N
 
