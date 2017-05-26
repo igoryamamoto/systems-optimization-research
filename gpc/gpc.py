@@ -2,7 +2,7 @@
 """
 Created on Thu Mar 31 17:03 2017
 
-@author: Ígor Yamamoto
+@author: Igor Yamamoto
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -25,14 +25,6 @@ class SystemModel(object):
         step_with_time = list(map(fun3, self.H))
         return [s[1] for s in step_with_time]
 
-    def create_matrix_G(self, g, p, m):
-        g = np.append(g[:p],np.zeros(m-1))
-        G = np.array([])
-        for i in range(p):
-            G = np.append(G,[g[i-j] for j in range(m)])
-        return np.resize(G,(p,m))
-
-
 class GPCController(object):
     def __init__(self, system, p, m, Q, R, du_min, du_max):
         self.system = system
@@ -49,14 +41,21 @@ class GPCController(object):
         self.A_til = AB[0]
         self.B = AB[1]
 
+    def create_matrix_G(self, g, p, m):
+        g = np.append(g[:p],np.zeros(m-1))
+        G = np.array([])
+        for i in range(p):
+            G = np.append(G,[g[i-j] for j in range(m)])
+        return np.resize(G,(p,m))
+
     def initialize_G(self):
         Ts = 1
         T = np.array(range(1, 200, Ts))
         g11, g12, g21, g22 = ethylene.step_response(T=T)
-        G11 = self.system.create_matrix_G(g11,p,m)
-        G12 = self.system.create_matrix_G(g12,p,m)
-        G21 = self.system.create_matrix_G(g21,p,m)
-        G22 = self.system.create_matrix_G(g22,p,m)
+        G11 = self.create_matrix_G(g11,p,m)
+        G12 = self.create_matrix_G(g12,p,m)
+        G21 = self.create_matrix_G(g21,p,m)
+        G22 = self.create_matrix_G(g22,p,m)
         G1 = np.hstack((G11,G12))
         G2 = np.hstack((G21,G22))
         G = np.vstack((G1,G2))
@@ -135,7 +134,6 @@ class Simulation(object):
         Ar21 = np.array([1, -0.969])
         Br22 = np.array([0.235])
         Ar22 = np.array([1, -1])
-        dr = 0
         na11 = len(Ar11)
         na12 = len(Ar12)
         na21 = len(Ar21)
@@ -200,11 +198,6 @@ class Simulation(object):
         plt.plot(u2,'--', label='u2')
         plt.legend(loc=4)
         plt.xlabel('sample time (k)')
-
-
-
-
-
 
 if __name__ == '__main__':
     nu = 2    # number of inputs
