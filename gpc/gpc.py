@@ -26,8 +26,9 @@ class SystemModel(object):
         return [s[1] for s in step_with_time]
 
 class GPCController(object):
-    def __init__(self, system, p, m, Q, R, du_min, du_max):
+    def __init__(self, system, Ts, p, m, Q, R, du_min, du_max):
         self.system = system
+        self.Ts = Ts
         self.nu = system.nu
         self.ny = system.ny
         self.p = p
@@ -49,8 +50,7 @@ class GPCController(object):
         return np.resize(G,(p,m))
 
     def initialize_G(self):
-        Ts = 1
-        T = np.array(range(1, 200, Ts))
+        T = np.array(range(1, 200, self.Ts))
         g11, g12, g21, g22 = ethylene.step_response(T=T)
         G11 = self.create_matrix_G(g11,p,m)
         G12 = self.create_matrix_G(g12,p,m)
@@ -116,23 +116,22 @@ class GPCController(object):
         return dup
 
 class Simulation(object):
-    def __init__(self, system, controller, real_system=None):
+    def __init__(self, controller, real_system=None):
+        self.controller = controller
         if real_system:
             self.real_system = real_system
         else:
-            self.real_system = system
-        self.system = system
-        self.controller = controller
+            self.real_system = controller.system
 
     def run(self, tsim):
         # Real Process
-        Br11 = np.array([-0.19])
+        Br11 = 1*np.array([-0.19])
         Ar11 = np.array([1, -1])
-        Br12 = np.array([-0.08498])
+        Br12 = 1*np.array([-0.08498])
         Ar12 = np.array([1, -0.95])
-        Br21 = np.array([-0.02362])
+        Br21 = 1*np.array([-0.02362])
         Ar21 = np.array([1, -0.969])
-        Br22 = np.array([0.235])
+        Br22 = 1*np.array([0.235])
         Ar22 = np.array([1, -1])
         na11 = len(Ar11)
         na12 = len(Ar12)
@@ -198,23 +197,25 @@ class Simulation(object):
         plt.plot(u2,'--', label='u2')
         plt.legend(loc=4)
         plt.xlabel('sample time (k)')
+        #plt.savefig('gpc_m5_p12_gain100.png')
 
 if __name__ == '__main__':
     nu = 2    # number of inputs
     ny = 2    # number of outputs
     h11 = signal.TransferFunction([-0.19],[1, 0])
-    h12 = signal.TransferFunction([-1.7],[19.5, 0])
+    h12 = signal.TransferFunction([-1.7],[19.5, 1])
     h21 = signal.TransferFunction([-0.763],[31.8, 1])
     h22 = signal.TransferFunction([0.235],[1, 0])
     ethylene = SystemModel(2, 2, [h11, h12, h21, h22])
 
-    p = 15    # prediction horizon
-    m = 3     # control horizon
+    p = 12    # prediction horizon
+    m = 5   # control horizon
     Q = np.eye(p*ny)
     R = 10**1*np.eye(m*nu)
     du_max = 0.2
     du_min = -0.2
-    controller = GPCController(ethylene, p, m, Q, R, du_min, du_max)
+    Ts = 1
+    controller = GPCController(ethylene, Ts, p, m, Q, R, du_min, du_max)
 
     real_h11 = signal.TransferFunction([-0.19],[1, -1])
     real_h12 = signal.TransferFunction([-1.7],[19.5, 0])
@@ -224,5 +225,5 @@ if __name__ == '__main__':
 
     solvers.options['show_progress'] = False
     tsim = 100
-    sim = Simulation(ethylene, controller)
+    sim = Simulation(controller)
     sim.run(tsim)
