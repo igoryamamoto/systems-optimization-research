@@ -55,7 +55,7 @@ def create_psi():
         Psi[row, row*(nu*na):row*(nu*na)+nu*na] = np.ones(nu*na)
     return Psi
 
-#%% Transfer Functions Gij (output i/ input j)
+#% Transfer Functions Gij (output i/ input j)
 
 # g11 = -0.19/s
 b11 = np.array([-0.19])
@@ -118,18 +118,25 @@ D = np.zeros((ny,nu))
 ethylene = signal.StateSpace(A, B, C, D)
 
 tsim = 100
-U = np.vstack(( [1,1] ,np.zeros((tsim-1,2)) ))
+#U = np.vstack(( [1,1] ,np.zeros((tsim-1,2)) ))
+import pickle
+with open('u1.pickle','rb') as f:
+    u1 = pickle.load(f)
+with open('u2.pickle','rb') as f:
+    u2 = pickle.load(f)
+U2 = np.vstack((u1,u2)).T
 T = np.arange(tsim)
 #res = ethylene.output(U, T)
 #plt.plot(res[1])
 X = np.zeros((tsim,8))
 Y = np.zeros((tsim,2))
 for k in T[:-1]:
-    X[k+1] = A.dot(X[k]) + B.dot(U[k])
+    X[k+1] = A.dot(X[k]) + B.dot(U2[k+1]-U2[k])
     Y[k+1] = C.dot(X[k])
 plt.plot(Y)
+plt.plot(u1,'--', label='u1')
+plt.plot(u2,'--', label='u2')
 #%%
-
 class SystemModel(object):
     def __init__(self, ny, nu, *args):
         self.ny = ny

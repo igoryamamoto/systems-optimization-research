@@ -197,6 +197,7 @@ class Simulation(object):
         plt.plot(u2,'--', label='u2')
         plt.legend(loc=4)
         plt.xlabel('sample time (k)')
+        return u1,u2
         #plt.savefig('gpc_m5_p12_gain100.png')
 
 if __name__ == '__main__':
@@ -226,4 +227,4 @@ if __name__ == '__main__':
     solvers.options['show_progress'] = False
     tsim = 100
     sim = Simulation(controller)
-    sim.run(tsim)
+    u1,u2=sim.run(tsim)
