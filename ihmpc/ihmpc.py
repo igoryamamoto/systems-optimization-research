@@ -123,7 +123,7 @@ class OPOM(SystemModel):
         D = np.zeros((self.ny,self.nu))
         return A, B, C, D
         
-    def sim(self, U, T):
+    def output(self, U, T):
         tsim = np.size(T)
         X = np.zeros((tsim,8))
         Y = np.zeros((tsim,2))
@@ -134,18 +134,11 @@ class OPOM(SystemModel):
         plt.plot(U, '--')
         #return U, Y
         
-class IHMPCController(object):
-    def __init__(self, system, Ts, m):
+class IHMPCController(OPOM):
+    def __init__(self, H, Ts, m):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
-        self.system = system
-        self.Ts = 1 # sample time
+        super().__init__(H, Ts)
         self.m = 3 # control horizon
-        self.ny = system.ny # number of outputs
-        self.nu = system.nu # number of inputs
-        self.na = 1 # max order of Gij
-        self.nd = self.ny*self.nu*self.na
-        self.nx = 2*self.ny+self.nd
-        self.A, self.B, self.C = self._build_OPOM()
                 
     
 
@@ -176,7 +169,7 @@ if __name__ == '__main__':
     U = np.vstack((u1,u2)).T
     T = np.arange(tsim)
     
-    ethylene.sim(U, T)
+    ethylene.output(U, T)
 
 ##%%
 #t_sim = 300
