@@ -11,10 +11,10 @@ from cvxopt import matrix, solvers
 
 
 class SystemModel(object):
-    def __init__(self, ny, nu, *args):
+    def __init__(self, ny, nu, H):
         self.ny = ny
         self.nu = nu
-        self.H = list(*args)
+        self.H = np.array(H)
 
     def step_response(self, X0=None, T=None, N=None):
         def fun(X02=None, T2=None, N2=None):
@@ -23,7 +23,7 @@ class SystemModel(object):
             return fun2
         fun3 = fun(X0, T, N)
         step_with_time = list(map(fun3, self.H))
-        return [s[1] for s in step_with_time]
+        return np.array([s[1] for s in step_with_time])
 
 class GPCController(object):
     def __init__(self, system, Ts, p, m, Q, R, du_min, du_max):
@@ -113,7 +113,9 @@ class GPCController(object):
         # Solve
         sol = solvers.qp(P=H,q=q,G=A,h=b)
         dup = list(sol['x'])
-        return dup
+        s = sol['status']
+        j = sol['primal objective']
+        return dup, j, s
 
 class Simulation(object):
     def __init__(self, controller, real_system=None):
@@ -139,24 +141,40 @@ class Simulation(object):
         na22 = len(Ar22)
         nb = 1
         # Reference and Disturbance Signals
-        w1 = np.array([1]*(tsim+p))
-        w2 = np.array([1]*(tsim+p))
+        #w1 = np.array([100]*int(tsim/4)+[100]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4+p))
+        #w2 = np.array([100]*int(tsim/4)+[100]*int(tsim/4)+[0.75]*int(tsim/4)+[0.75]*int(tsim/4+p))
+        a1 = list(0.0125*np.arange(int(tsim/2)))
+        b1 = [1.25]*int(tsim/4)
+        c1 = list(b1-0.025*np.arange(int(tsim/4)))
+        #c1.reverse()
+        d1 = [1.25]*int(tsim/2+p)
+        w1 = np.array(a1+d1)
+        
+        a1 = list(0.01*np.arange(int(tsim/2)))
+        b1 = [1]*int(tsim/4)
+        c1 = list(b1-0.02*np.arange(int(tsim/4)))
+        #c1.reverse()
+        d1 = [1]*int(tsim/2+p)
+        w2 = np.array(a1+d1)
+        
         # Initialization
-        y11 = np.zeros(tsim+1)
-        y12 = np.zeros(tsim+1)
-        y21 = np.zeros(tsim+1)
-        y22 = np.zeros(tsim+1)
+        y11 = 0*np.ones(tsim+1)
+        y12 = 0*np.ones(tsim+1)
+        y21 = 0*np.ones(tsim+1)
+        y22 = 0*np.ones(tsim+1)
         u1 = np.zeros(tsim+1)
         u2 = np.zeros(tsim+1)
         du1 = np.zeros(tsim+1)
         du2 = np.zeros(tsim+1)
-        y11_past = np.zeros(na11)
-        y12_past = np.zeros(na12)
-        y21_past = np.zeros(na21)
-        y22_past = np.zeros(na22)
+        y11_past = 0*np.ones(na11)
+        y12_past = 0*np.ones(na12)
+        y21_past = 0*np.ones(na21)
+        y22_past = 0*np.ones(na22)
         u1_past = np.zeros(nb)
         u2_past = np.zeros(nb)
-
+        
+        J = np.zeros(tsim)
+        Status = ['']*tsim
         # Control Loop
         for k in range(1,tsim+1):
             y11[k] = -Ar11[1:].dot(y11_past[:-1]) + Br11.dot(u1_past)
@@ -170,7 +188,7 @@ class Simulation(object):
             du_past = np.array([du1[k-1], du2[k-1]])
             y_past = [y11_past, y12_past, y21_past, y22_past]
             current_du = [np.array([du1[k]]), np.array([du2[k]])]
-            dup = self.controller.calculate_control(w,
+            dup,j,s = self.controller.calculate_control(w,
                                                     du_past=du_past,
                                                     y_past=y_past,
                                                     current_du=current_du)
@@ -187,18 +205,20 @@ class Simulation(object):
             y21_past = np.append(y21[k],y21_past[:-1])
             y22_past = np.append(y22[k],y22_past[:-1])
 
-
+            J[k-1] = abs(j)
+            Status[k-1] = s 
         #%% Teste
         plt.clf()
-        plt.plot([1]*(tsim+1),':', label='Target')
+        plt.plot(w1[:-p],':', label='Target y1')
+        plt.plot(w2[:-p],':', label='Target y2')
         plt.plot(y11+y12, label='y1')
         plt.plot(y21+y22, label='y2')
         plt.plot(u1,'--', label='u1')
         plt.plot(u2,'--', label='u2')
-        plt.legend(loc=4)
-        plt.xlabel('sample time (k)')
-        return u1,u2
-        #plt.savefig('gpc_m5_p12_gain100.png')
+        plt.legend(loc=0, fontsize='small')
+        plt.xlabel('sample time (k)')    
+        #plt.savefig('sim8.png')
+        return J, Status
 
 if __name__ == '__main__':
     nu = 2    # number of inputs
@@ -209,10 +229,10 @@ if __name__ == '__main__':
     h22 = signal.TransferFunction([0.235],[1, 0])
     ethylene = SystemModel(2, 2, [h11, h12, h21, h22])
 
-    p = 12    # prediction horizon
-    m = 5   # control horizon
-    Q = np.eye(p*ny)
-    R = 10**1*np.eye(m*nu)
+    p = 10    # prediction horizon
+    m = 3   # control horizon
+    Q = 1*np.eye(p*ny)
+    R = 1*np.eye(m*nu)
     du_max = 0.2
     du_min = -0.2
     Ts = 1
@@ -225,6 +245,7 @@ if __name__ == '__main__':
     real_ethylene = SystemModel(2, 2, [real_h11, real_h12, real_h21, real_h22])
 
     solvers.options['show_progress'] = False
-    tsim = 100
+    tsim = 200
     sim = Simulation(controller)
-    u1,u2=sim.run(tsim)
+    J, S = sim.run(tsim)
+    #plt.plot(J)

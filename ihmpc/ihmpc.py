@@ -130,8 +130,12 @@ class OPOM(SystemModel):
         for k in range(tsim-1):
             X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k+1]-U[k])
             Y[k+1] = self.C.dot(X[k])
-        plt.plot(Y)
-        plt.plot(U, '--')
+        plt.plot(Y[:,0], label='y1')
+        plt.plot(Y[:,1], label='y2')
+        plt.plot(U[1:,0]+1, '--', label='u1')
+        plt.plot(U[1:,1]+1, '--', label='u2')
+        plt.legend(loc=4)
+        plt.savefig('opom_step.png')
         #return U, Y
         
 class IHMPCController(OPOM):
@@ -160,13 +164,13 @@ if __name__ == '__main__':
     ethylene = OPOM(H, Ts)
 
     tsim = 100
-    #U = np.vstack(( [1,1] ,np.zeros((tsim-1,2)) ))
+    U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
     import pickle
     with open('u1.pickle','rb') as f:
         u1 = pickle.load(f)
     with open('u2.pickle','rb') as f:
         u2 = pickle.load(f)
-    U = np.vstack((u1,u2)).T
+    #U = np.vstack((u1,u2)).T
     T = np.arange(tsim)
     
     ethylene.output(U, T)
