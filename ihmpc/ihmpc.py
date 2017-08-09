@@ -132,8 +132,8 @@ class OPOM(SystemModel):
             Y[k+1] = self.C.dot(X[k])
         plt.plot(Y[:,0], label='y1')
         plt.plot(Y[:,1], label='y2')
-        plt.plot(U[1:,0]+1, '--', label='u1')
-        plt.plot(U[1:,1]+1, '--', label='u2')
+        plt.plot(U[1:,0], '--', label='u1')
+        plt.plot(U[1:,1], '--', label='u2')
         plt.legend(loc=4)
         plt.savefig('opom_step.png')
         #return U, Y
@@ -164,13 +164,13 @@ if __name__ == '__main__':
     ethylene = OPOM(H, Ts)
 
     tsim = 100
-    U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
+    #U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
     import pickle
     with open('u1.pickle','rb') as f:
         u1 = pickle.load(f)
     with open('u2.pickle','rb') as f:
         u2 = pickle.load(f)
-    #U = np.vstack((u1,u2)).T
+    U = np.vstack((u1,u2)).T
     T = np.arange(tsim)
     
     ethylene.output(U, T)

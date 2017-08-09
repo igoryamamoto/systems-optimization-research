@@ -141,21 +141,21 @@ class Simulation(object):
         na22 = len(Ar22)
         nb = 1
         # Reference and Disturbance Signals
-        #w1 = np.array([100]*int(tsim/4)+[100]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4+p))
-        #w2 = np.array([100]*int(tsim/4)+[100]*int(tsim/4)+[0.75]*int(tsim/4)+[0.75]*int(tsim/4+p))
-        a1 = list(0.0125*np.arange(int(tsim/2)))
-        b1 = [1.25]*int(tsim/4)
-        c1 = list(b1-0.025*np.arange(int(tsim/4)))
+        w1 = np.array([1]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4+p))
+        w2 = np.array([1]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4)+[1]*int(tsim/4+p))
+        #a1 = list(0.0125*np.arange(int(tsim/2)))
+        #b1 = [1.25]*int(tsim/4)
+        #c1 = list(b1-0.025*np.arange(int(tsim/4)))
         #c1.reverse()
-        d1 = [1.25]*int(tsim/2+p)
-        w1 = np.array(a1+d1)
+        #d1 = [1.25]*int(tsim/2+p)
+        #w1 = np.array(a1+d1)
         
-        a1 = list(0.01*np.arange(int(tsim/2)))
-        b1 = [1]*int(tsim/4)
-        c1 = list(b1-0.02*np.arange(int(tsim/4)))
+        #a1 = list(0.01*np.arange(int(tsim/2)))
+        #b1 = [1]*int(tsim/4)
+        #c1 = list(b1-0.02*np.arange(int(tsim/4)))
         #c1.reverse()
-        d1 = [1]*int(tsim/2+p)
-        w2 = np.array(a1+d1)
+        #d1 = [1]*int(tsim/2+p)
+        #w2 = np.array(a1+d1)
         
         # Initialization
         y11 = 0*np.ones(tsim+1)
@@ -232,20 +232,20 @@ if __name__ == '__main__':
     p = 10    # prediction horizon
     m = 3   # control horizon
     Q = 1*np.eye(p*ny)
-    R = 1*np.eye(m*nu)
+    R = 10*np.eye(m*nu)
     du_max = 0.2
     du_min = -0.2
     Ts = 1
     controller = GPCController(ethylene, Ts, p, m, Q, R, du_min, du_max)
 
-    real_h11 = signal.TransferFunction([-0.19],[1, -1])
-    real_h12 = signal.TransferFunction([-1.7],[19.5, 0])
+    real_h11 = signal.TransferFunction([-0.19],[1, 0])
+    real_h12 = signal.TransferFunction([-1.7],[19.5, 1])
     real_h21 = signal.TransferFunction([-0.763],[31.8, 1])
     real_h22 = signal.TransferFunction([0.235],[1, 0])
     real_ethylene = SystemModel(2, 2, [real_h11, real_h12, real_h21, real_h22])
 
     solvers.options['show_progress'] = False
-    tsim = 200
+    tsim = 100
     sim = Simulation(controller)
     J, S = sim.run(tsim)
     #plt.plot(J)
