@@ -32,7 +32,13 @@ class OPOM(SystemModel):
         self.na = 1 # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
-        self.A, self.B, self.C, self.D = self._build_OPOM()
+        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi = self._build_OPOM()
+    
+    def __repr__(self):
+        return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(), 
+                                                         self.B.__repr__(), 
+                                                         self.C.__repr__(), 
+                                                         self.D.__repr__())
         
     def _get_coeff(self, b, a):
         # multiply by 1/s (step)
@@ -121,7 +127,7 @@ class OPOM(SystemModel):
         C = np.hstack(( np.eye(self.ny), Psi, np.zeros((self.ny,self.ny)) ))
         
         D = np.zeros((self.ny,self.nu))
-        return A, B, C, D
+        return A, B, C, D, D0, Di, Dd, J, F, N, Psi
         
     def output(self, U, T):
         tsim = np.size(T)
@@ -142,9 +148,9 @@ class IHMPCController(OPOM):
     def __init__(self, H, Ts, m):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
         super().__init__(H, Ts)
+        self.system = H
         self.m = 3 # control horizon
                 
-    
 
 #TODO: Define matrix Wn[ndxnd.m] from F
 
@@ -161,8 +167,16 @@ if __name__ == '__main__':
     h22 = signal.TransferFunction([0.235],[1, 0])
     H = [[h11, h12], [h21, h22]]
     Ts = 1
-    ethylene = OPOM(H, Ts)
-
+    m = 3
+    controller = IHMPCController(H, Ts, m)
+    A = controller.A
+    B = controller.B
+    C = controller.C
+    D = controller.D
+    Dd = controller.Dd
+    Di = controller.Di
+    N = controller.N
+    F =controller.F
     tsim = 100
     #U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
     import pickle
@@ -173,7 +187,7 @@ if __name__ == '__main__':
     U = np.vstack((u1,u2)).T
     T = np.arange(tsim)
     
-    ethylene.output(U, T)
+    controller.output(U, T)
 
 ##%%
 #t_sim = 300
