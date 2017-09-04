@@ -2,7 +2,7 @@
 """
 Created on Wed Apr 26 12:07:03 2017
 
-@author: igoryamamoto
+@author: Igor Yamamoto
 """
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,24 +10,11 @@ from cvxopt import matrix, solvers
 from scipy import signal
 
 
-class SystemModel(object):
-    def __init__(self, H):
+class OPOM(object):
+    def __init__(self, H, Ts):
         self.H = np.array(H)
         self.ny = self.H.shape[0]
         self.nu = self.H.shape[1]
-
-    def step_response(self, X0=None, T=None, N=None):
-        def fun(X02=None, T2=None, N2=None):
-            def fun2(sys):
-                return signal.step(sys, X02, T2, N2)
-            return fun2
-        fun3 = fun(X0, T, N)
-        step_with_time = list(map(fun3, self.H))
-        return [s[1] for s in step_with_time]
-
-class OPOM(SystemModel):
-    def __init__(self, H, Ts):
-        super().__init__(H)
         self.Ts = Ts
         self.na = 1 # max order of Gij
         self.nd = self.ny*self.nu*self.na
