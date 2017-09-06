@@ -20,7 +20,7 @@ class OPOM(object):
         self.na = 1 # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
-        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi = self._build_OPOM()
+        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi, self.R = self._build_OPOM()
     
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(), 
@@ -90,6 +90,7 @@ class OPOM(object):
         d0_21, dd_21, di_21, r_21 = self._get_coeff(b21, a21)
         d0_22, dd_22, di_22, r_22 = self._get_coeff(b22, a22)
         
+        R = [r_11, r_12, r_21, r_22]
         # Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
         D0 = np.vstack((np.hstack((d0_11, d0_12)),
                        np.hstack((d0_21, d0_22))))
@@ -115,7 +116,7 @@ class OPOM(object):
         C = np.hstack(( np.eye(self.ny), Psi, np.zeros((self.ny,self.ny)) ))
         
         D = np.zeros((self.ny,self.nu))
-        return A, B, C, D, D0, Di, Dd, J, F, N, Psi
+        return A, B, C, D, D0, Di, Dd, J, F, N, Psi, R
         
     def output(self, U, T):
         tsim = np.size(T)
@@ -196,7 +197,7 @@ class IHMPCController(OPOM):
             
         return Z, D0_n, Di_1n, Di_2n, Wn
     
-    def calculate_control(self):
+    def control(self):
         H_m = 0
         for n in range(m):
             a = self.Z.T.dot(self.Wn[n].T).dot(G2(n) - G2(n-1)).dot(self.Wn[n]).dot(self.Z)
@@ -243,14 +244,17 @@ if __name__ == '__main__':
     B = controller.B
     C = controller.C
     D = controller.D
+    D0 = controller.D0
     Dd = controller.Dd
     Di = controller.Di
     N = controller.N
     F = controller.F
     Z = controller.Z
+    R = controller.R
     D0_n = controller.D0_n
     Di_1n = controller.Di_1n
     Di_2n = controller.Di_2n
+    Psi = controller.Psi
     Wn = controller.Wn
     tsim = 100
     #U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))

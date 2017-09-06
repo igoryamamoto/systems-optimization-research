@@ -18,7 +18,7 @@ Z = z
 for i in range(m-1):
     Z = block_diag(Z,z)
 
-Q = np.eye(m)
+Q = np.eye(m) # verificar dimensão
 
 
 def faz_D0n_ou_Di1n(D, n, m):
