@@ -197,7 +197,49 @@ class IHMPCController(OPOM):
             
         return Z, D0_n, Di_1n, Di_2n, Wn
     
+    
     def control(self):
+        def G1(self, n):
+            ns = self.nu*self.ny # numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = n
+                    else:
+                        g = 1/r*(np.exp(r*n)-1)
+                    G[i, count] = g
+                    count += 1
+            return G
+    
+        def G2(self, n):
+            ns = self.nu*self.ny# numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = n
+                    else:
+                        g = 1/(2*r)*(np.exp(2*r*n)-1)
+                    G[i, count] = g
+                    count += 1
+            return G
+        
+        def G3(self, n):
+            ns = self.nu*self.ny # numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = 1/2*n**2
+                    else:
+                        g = 0
+                    G[i, count] = g
+                    count += 1
+            return G
         H_m = 0
         for n in range(m):
             a = self.Z.T.dot(self.Wn[n].T).dot(G2(n) - G2(n-1)).dot(self.Wn[n]).dot(self.Z)
