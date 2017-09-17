@@ -207,7 +207,7 @@ class Simulation(object):
 
             J[k-1] = abs(j)
             Status[k-1] = s 
-        #%% Teste
+        # Teste
         plt.clf()
         plt.plot(w1[:-p],':', label='Target y1')
         plt.plot(w2[:-p],':', label='Target y2')

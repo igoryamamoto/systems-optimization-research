@@ -2,37 +2,25 @@
 """
 Created on Wed Apr 26 12:07:03 2017
 
-@author: igoryamamoto
+@author: Igor Yamamoto
 """
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 from scipy import signal
+from scipy.linalg import block_diag
 
 
-class SystemModel(object):
-    def __init__(self, H):
+class OPOM(object):
+    def __init__(self, H, Ts):
         self.H = np.array(H)
         self.ny = self.H.shape[0]
         self.nu = self.H.shape[1]
-
-    def step_response(self, X0=None, T=None, N=None):
-        def fun(X02=None, T2=None, N2=None):
-            def fun2(sys):
-                return signal.step(sys, X02, T2, N2)
-            return fun2
-        fun3 = fun(X0, T, N)
-        step_with_time = list(map(fun3, self.H))
-        return [s[1] for s in step_with_time]
-
-class OPOM(SystemModel):
-    def __init__(self, H, Ts):
-        super().__init__(H)
         self.Ts = Ts
         self.na = 1 # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
-        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi = self._build_OPOM()
+        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi, self.R = self._build_OPOM()
     
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(), 
@@ -102,6 +90,7 @@ class OPOM(SystemModel):
         d0_21, dd_21, di_21, r_21 = self._get_coeff(b21, a21)
         d0_22, dd_22, di_22, r_22 = self._get_coeff(b22, a22)
         
+        R = [r_11, r_12, r_21, r_22]
         # Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
         D0 = np.vstack((np.hstack((d0_11, d0_12)),
                        np.hstack((d0_21, d0_22))))
@@ -127,7 +116,7 @@ class OPOM(SystemModel):
         C = np.hstack(( np.eye(self.ny), Psi, np.zeros((self.ny,self.ny)) ))
         
         D = np.zeros((self.ny,self.nu))
-        return A, B, C, D, D0, Di, Dd, J, F, N, Psi
+        return A, B, C, D, D0, Di, Dd, J, F, N, Psi, R
         
     def output(self, U, T):
         tsim = np.size(T)
@@ -141,24 +130,149 @@ class OPOM(SystemModel):
         plt.plot(U[1:,0], '--', label='u1')
         plt.plot(U[1:,1], '--', label='u2')
         plt.legend(loc=4)
-        plt.savefig('opom_step.png')
+        plt.savefig('../../img/opom_step.png')
+        plt.show()
         #return U, Y
         
 class IHMPCController(OPOM):
     def __init__(self, H, Ts, m):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
         super().__init__(H, Ts)
-        self.system = H
-        self.m = 3 # control horizon
-                
-
-#TODO: Define matrix Wn[ndxnd.m] from F
-
-#TODO: Define matrix Z[?] from Dd,N
-
-#TODO: Define matrices D0n[nyxm.nu], Di1n[nyxm.nu], D12n[nyxm.nu]
-
-#TODO: Obtain G1, G2, G3
+        self.m = m # control horizon
+        self.Q = np.eye(m)
+        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn = self._make_matrices()
+    
+    def _make_matrices(self):
+        def faz_D0n_ou_Di1n(D, n, m):
+            D_n = D
+            for i in range(m-1):
+                if i >= n-1:
+                    d_n = np.zeros(D.shape)
+                else:
+                    d_n = D
+                D_n = np.concatenate((D_n,d_n), axis=1)
+            return D_n
+    
+        def faz_Di2n(D, n, m):
+            D_n = np.zeros(D.shape)
+            for i in range(1, m):
+                if i > n:
+                    d_n = np.zeros(D.shape)
+                else:
+                    d_n = i*Ts*D
+                D_n = np.concatenate((D_n,d_n), axis=1)
+            return D_n
+        
+        def faz_Wn(F, n, m):
+            Wn = np.eye(F.shape[0])
+            for i in range(1, m):
+                if i > n-1:
+                    wn = np.zeros(F.shape)
+                else:
+                    f = np.diag(F)
+                    wn = np.diag(f ** (-i))
+                    
+                Wn = np.concatenate((Wn,wn), axis=1)
+            return Wn
+    
+        z = self.Dd.dot(self.N)
+        Z = z
+        for i in range(self.m - 1):
+            Z = block_diag(Z,z)
+            
+        D0_n = []
+        for i in range(1, self.m + 1):
+            D0_n.append(faz_D0n_ou_Di1n(self.D0, i, self.m))
+        
+        Di_1n = []
+        for i in range(1, self.m + 1):
+            Di_1n.append(faz_D0n_ou_Di1n(self.Di, i, self.m))
+        
+        Di_2n = []
+        for i in range(m):
+            Di_2n.append(faz_Di2n(self.Di, i, self.m))
+        
+        Wn = []
+        for i in range(1, self.m + 1):
+            Wn.append(faz_Wn(self.F, i, self.m))
+            
+        return Z, D0_n, Di_1n, Di_2n, Wn
+    
+    
+    def control(self):
+        def G1(self, n):
+            ns = self.nu*self.ny # numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = n
+                    else:
+                        g = 1/r*(np.exp(r*n)-1)
+                    G[i, count] = g
+                    count += 1
+            return G
+    
+        def G2(self, n):
+            ns = self.nu*self.ny# numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = n
+                    else:
+                        g = 1/(2*r)*(np.exp(2*r*n)-1)
+                    G[i, count] = g
+                    count += 1
+            return G
+        
+        def G3(self, n):
+            ns = self.nu*self.ny # numero de sistemas -> cuidar que nem sempre sera SISO
+            G = np.zeros((ns, self.nd))
+            count = 0
+            for i, l in enumerate(self.R):
+                for r in l:
+                    if r == 0:
+                        g = 1/2*n**2
+                    else:
+                        g = 0
+                    G[i, count] = g
+                    count += 1
+            return G
+        H_m = 0
+        for n in range(m):
+            a = self.Z.T.dot(self.Wn[n].T).dot(G2(n) - G2(n-1)).dot(self.Wn[n]).dot(self.Z)
+            b1 = (G1(n) - G1(n-1)).T.dot(self.Q).dot(self.D0_n[n] - self.Di_2n[n])
+            b2 = (G3(n) - G3(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
+            b3 = (G1(n) - G1(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
+            b = 2*self.Z.T.dot(self.Wn[n].T).dot(b1 + b2 + b3)
+            c1 = self.Ts[n]*(self.D0_n[n] - self.Di_2n[n]).T.dot(self.Q).dot(self.D0_n[n] - self.Di_2n[n])
+            c2 = 2*(n - 1/2)*Ts**2*(self.D0_n[n] - self.Di_2n[n]).T.dot(self.Q).dot(self.Di_1n[n])
+            c3 = (n**3 - n + 1/3)*Ts**3*self.Di_1n[n].T.dot(self.Q).dot(self.Di_1n[n])
+            c = c1 + c2 + c3
+            H_m += a + b + c
+        H_inf = self.Z.T.dot(self.W_m.T).dot(G2_inf - G2_m).dot(self.W_m).dot(self.Z)
+        H = H_m + H_inf
+        
+        cf_m = 0
+        for n in range(m):
+            a = (-e_s.T.dot(self.Q).dot(G1(n)-G1(n-1)) + x_d.T * (G2(n)-G2(n-1)) + x_i.T.dot(self.Q.dot(G3(n)-G3(n-1))))*self.Wn*self.Z
+            b = (-self.Ts*e_s.T + (n - 1/2)*self.Ts**2*x_i.T + x_d.T*(G1(n)-G1(n-1)).T).dot(self.Q).dot(self.D0_n - self.Di_2n)
+            c = (-(n - 1/2)*self.Ts**2*e_s.T + (n**3 - n + 1/3)*self.Ts**3*x_i.T + x_d.T*(G3(n) - G3(n - 1)).T).dot(self.Q).dot(self.Di_1n[n])
+            cf_m += a + b + c 
+        cf_inf = x_d.T*(G2_inf - G2_m).dot(W_m).dot(self.Z)
+        cf = cf_m + cf_inf
+        
+        sol = solvers.qp(P=H, q=cf)
+        # minimize    (1/2)*x'*P*x + q'*x 
+        # subject to  G*x <= h      
+        #             A*x = b.
+        du = list(sol['x'])
+        # s = sol['status']
+        # j = sol['primal objective']
+        return du
 
 if __name__ == '__main__':
     h11 = signal.TransferFunction([-0.19],[1, 0])
@@ -173,10 +287,18 @@ if __name__ == '__main__':
     B = controller.B
     C = controller.C
     D = controller.D
+    D0 = controller.D0
     Dd = controller.Dd
     Di = controller.Di
     N = controller.N
-    F =controller.F
+    F = controller.F
+    Z = controller.Z
+    R = controller.R
+    D0_n = controller.D0_n
+    Di_1n = controller.Di_1n
+    Di_2n = controller.Di_2n
+    Psi = controller.Psi
+    Wn = controller.Wn
     tsim = 100
     #U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
     import pickle
@@ -188,87 +310,4 @@ if __name__ == '__main__':
     T = np.arange(tsim)
     
     controller.output(U, T)
-
-##%%
-#t_sim = 300
-#
-## Real Process
-#Br11 = np.array([-0.19])
-#Ar11 = np.array([1, -1])
-#Br12 = np.array([-0.08498])
-#Ar12 = np.array([1, -0.95])
-#Br21 = np.array([-0.02362])
-#Ar21 = np.array([1, -0.969])
-#Br22 = np.array([0.235])
-#Ar22 = np.array([1, -1])
-#
-#na11 = len(Ar11)
-#na12 = len(Ar12)
-#na21 = len(Ar21)
-#na22 = len(Ar22)
-#nb = 1
-#
-##%% Set point and Disturbance Signals
-#w1 = np.array([1]*(t_sim))
-#w2 = np.array([1]*(t_sim))
-#
-##%% Initialization
-#y11 = np.zeros(t_sim+1)
-#y12 = np.zeros(t_sim+1)
-#y21 = np.zeros(t_sim+1)
-#y22 = np.zeros(t_sim+1)
-#u1 = np.zeros(t_sim+1)
-#u2 = np.zeros(t_sim+1)
-#du1 = np.zeros(t_sim+1)
-#du2 = np.zeros(t_sim+1)
-#y11_past = np.zeros(na11)
-#y12_past = np.zeros(na12)
-#y21_past = np.zeros(na21)
-#y22_past = np.zeros(na22)
-#u1_past = np.zeros(nb)
-#u2_past = np.zeros(nb)
-#
-##%% Control Loop
-#for k in range(1,t_sim+1):
-#    # Real process
-#    y11[k] = -Ar11[1:].dot(y11_past[:-1]) + Br11.dot(u1_past)
-#    y12[k] = -Ar12[1:].dot(y12_past[:-1]) + Br12.dot(u2_past)
-#    y21[k] = -Ar21[1:].dot(y21_past[:-1]) + Br21.dot(u1_past)
-#    y22[k] = -Ar22[1:].dot(y22_past[:-1]) + Br22.dot(u2_past)
-#
-#    # Free Response
-#
-#
-#    # Select set points for the current horizon
-#    w = []
-#    # Solver Inputs
-#    H = matrix()
-#    q = matrix()
-#    A = matrix()
-#    b = matrix()
-#    # Solve
-#    sol = solvers.qp(P=H,q=q,G=A,h=b)
-#    dup = list(sol['x'])
-#
-#    du1[k] = dup[0]
-#    du2[k] = dup[m]
-#    u1[k] = u1[k-1] + du1[k]
-#    u2[k] = u2[k-1] + du2[k]
-#
-#    u1_past = np.append(u1[k],u1_past[:-1])
-#    u2_past = np.append(u2[k],u2_past[:-1])
-#    y11_past = np.append(y11[k],y11_past[:-1])
-#    y12_past = np.append(y12[k],y12_past[:-1])
-#    y21_past = np.append(y21[k],y21_past[:-1])
-#    y22_past = np.append(y22[k],y22_past[:-1])
-#
-#
-##%% Teste
-#plt.clf()
-#plt.plot([1]*(t_sim+1),':', label='Target')
-#plt.plot(y11+y12, label='y1')
-#plt.plot(y21+y22, label='y2')
-#plt.plot(u1,'--', label='u1')
-#plt.plot(u2,'--', label='u2')
-#plt.legend(loc=4)
-#plt.xlabel('sample time (k)')
+    
