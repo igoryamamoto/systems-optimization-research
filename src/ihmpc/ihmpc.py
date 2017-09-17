@@ -130,7 +130,8 @@ class OPOM(object):
         plt.plot(U[1:,0], '--', label='u1')
         plt.plot(U[1:,1], '--', label='u2')
         plt.legend(loc=4)
-        plt.savefig('opom_step.png')
+        plt.savefig('../../img/opom_step.png')
+        plt.show()
         #return U, Y
         
 class IHMPCController(OPOM):
