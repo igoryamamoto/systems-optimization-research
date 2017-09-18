@@ -20,6 +20,7 @@ class OPOM(object):
         self.na = 1 # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
+        self.X = np.zeros(self.nx)
         self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi, self.R = self._build_OPOM()
     
     def __repr__(self):
@@ -90,7 +91,7 @@ class OPOM(object):
         d0_21, dd_21, di_21, r_21 = self._get_coeff(b21, a21)
         d0_22, dd_22, di_22, r_22 = self._get_coeff(b22, a22)
         
-        R = [r_11, r_12, r_21, r_22]
+        R = np.array([r_11, r_12, r_21, r_22])
         # Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
         D0 = np.vstack((np.hstack((d0_11, d0_12)),
                        np.hstack((d0_21, d0_22))))
@@ -112,11 +113,20 @@ class OPOM(object):
         
         B = np.vstack((D0+self.Ts*Di, Dd.dot(F).dot(N), Di))
         
-        Psi = self._create_psi()
-        C = np.hstack(( np.eye(self.ny), Psi, np.zeros((self.ny,self.ny)) ))
+        def psi(t):
+            R2 = np.array(list(map(lambda x: np.exp(x*t), R)))
+            psi = np.zeros((self.ny, self.nd))
+            for i in range(self.ny):
+                phi = np.array([])
+                for j in range(self.nu):
+                    phi = np.concatenate((phi, R2[i*self.nu+j]))
+                psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi      
+            return psi
+        
+        C = lambda t: np.hstack(( np.eye(self.ny), psi(t), np.eye(self.ny)*t))
         
         D = np.zeros((self.ny,self.nu))
-        return A, B, C, D, D0, Di, Dd, J, F, N, Psi, R
+        return A, B, C, D, D0, Di, Dd, J, F, N, psi, R
         
     def output(self, U, T):
         tsim = np.size(T)
@@ -124,7 +134,7 @@ class OPOM(object):
         Y = np.zeros((tsim,2))
         for k in range(tsim-1):
             X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k+1]-U[k])
-            Y[k+1] = self.C.dot(X[k])
+            Y[k+1] = self.C(0).dot(X[k])
         plt.plot(Y[:,0], label='y1')
         plt.plot(Y[:,1], label='y2')
         plt.plot(U[1:,0], '--', label='u1')
