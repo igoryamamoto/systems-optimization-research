@@ -149,7 +149,7 @@ class IHMPCController(OPOM):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
         super().__init__(H, Ts)
         self.m = m # control horizon
-        self.Q = np.eye(m)
+        self.Q = np.eye(self.ny)
         self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn = self._make_matrices()
     
     def _make_matrices(self):

@@ -6,22 +6,38 @@ Created on Wed Sep  6 10:05:34 2017
 @author: peixeboi
 """
 import numpy as np
-# contar o numero de elementos de R -> problema quando tem mais de um polo numa FT
-def G1(n, R):
-    nu = 2
+def psi(t):
     ny = 2
-    ns = nu*ny # numero de sistemas -> cuidar que nem sempre sera SISO
-    nd = 4 # contar numero de elementos de R
-    G = np.zeros((ns, nd))
-    count = 0
-    for i, l in enumerate(R):
-        for r in l:
+    nd = 4
+    nu = 2
+    na = 1
+    R = np.array([np.array([ 0.]), np.array([-0.05128205]), np.array([-0.03144654]), np.array([ 0.])])
+    R2 = np.array(list(map(lambda x: np.exp(x*t), R)))
+    psi = np.zeros((ny, nd))
+    for i in range(ny):
+        phi = np.array([])
+        for j in range(nu):
+            phi = np.concatenate((phi, R2[i*nu+j]))
+        psi[i, i*nu*na:(i+1)*nu*na] = phi      
+    return psi
+
+def G1(n):
+    ny = 2
+    nd = 4
+    nu = 2
+    na = 1
+    R = np.array([np.array([ 0.]), np.array([-0.05128205]), np.array([-0.03144654]), np.array([ 0.])])
+    G = np.zeros((ny, nd))
+    for i in range(ny):
+        phi = np.array([])
+        for j in range(nu):
+            r = R[i*nu+j]
             if r == 0:
-                g = n
+                g = 0
             else:
                 g = 1/r*(np.exp(r*n)-1)
-            G[i, count] = g
-            count += 1
+            phi = np.append(phi, g)
+        G[i, i*nu*na:(i+1)*nu*na] = phi      
     return G
 
 def G2(n, R):
@@ -40,6 +56,7 @@ def G2(n, R):
             G[i, count] = g
             count += 1
     return G
+
 
 def G3(n, R):
     nu = 2
