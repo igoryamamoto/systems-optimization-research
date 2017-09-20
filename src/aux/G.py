@@ -33,52 +33,56 @@ def G1(n):
         for j in range(nu):
             r = R[i*nu+j]
             if r == 0:
-                g = 0
+                g = n
             else:
                 g = 1/r*(np.exp(r*n)-1)
             phi = np.append(phi, g)
         G[i, i*nu*na:(i+1)*nu*na] = phi      
     return G
 
-def G2(n, R):
+from scipy.linalg import block_diag
+def G2(n):
     nu = 2
     ny = 2
-    ns = nu*ny # numero de sistemas -> cuidar que nem sempre sera SISO
-    nd = 4 # contar numero de elementos de R
-    G = np.zeros((ns, nd))
-    count = 0
-    for i, l in enumerate(R):
-        for r in l:
-            if r == 0:
-                g = n
-            else:
-                g = 1/(2*r)*(np.exp(2*r*n)-1)
-            G[i, count] = g
-            count += 1
-    return G
-
-
-def G3(n, R):
-    nu = 2
+    R = np.array([np.array([ 0.]), np.array([-0.05128205]), np.array([-0.03144654]), np.array([ 0.])])
+    G = np.array([])
+    for y in range(ny):
+        r = R[y*nu:y*nu+nu]
+        g = np.zeros((nu, nu))
+        for i in range(nu):
+            for j in range(nu):
+                g[i, j] = r[i] + r[j]
+        G = block_diag(G, g)
+    return G[1:]
+        
+def G3(n):
     ny = 2
-    ns = nu*ny # numero de sistemas -> cuidar que nem sempre sera SISO
-    nd = 4 # contar numero de elementos de R
-    G = np.zeros((ns, nd))
-    count = 0
-    for i, l in enumerate(R):
-        for r in l:
-            if r == 0:
-                g = 1/2*n**2
-            else:
-                g = 0
-            G[i, count] = g
-            count += 1
+    nd = 4
+    nu = 2
+    na = 1
+    R = np.array([np.array([ 0.]), np.array([-0.05128205]), np.array([-0.03144654]), np.array([ 0.])])
+    G = np.zeros((ny, nd))
+    for i in range(ny):
+        phi = np.array([])
+        for j in range(nu):
+            r = R[i*nu+j]
+            phi = np.append(phi, r)
+        if 0 in phi:
+            def aux(x):
+                if x==0:
+                    return 0
+                else:
+                    return (1/x**2)*np.exp(x*n)*(x*n-1)
+            phi = np.array(list(map(aux, phi)))
+        else:
+            phi = np.zeros(nu)
+        G[i, i*nu*na:(i+1)*nu*na] = phi 
     return G
 
 H_m = 0
 for n in range(m):
     a = Z.T.dot(Wn[n].T).dot(G2(n, R)-G2(n-1, R)).dot(Wn[n]).dot(Z)
-    b1 = (G1(n, R) - G1(n-1, R)).T.dot(Q).dot(D0_n[n]-Di_2n[n])
+    b1 = (G1(n) - G1(n-1)).T.dot(Q).dot(D0_n[n]-Di_2n[n])
     b2 = (G3(n, R)-G3(n-1, R)).T.dot(Q).dot(Di_1n[n])
     b3 = (G1(n, R)-G1(n-1, R)).T.dot(Q).dot(Di_1n[n])
     b = 2*Z.T.dot(Wn[n].T).dot(b1+b2+b3)
