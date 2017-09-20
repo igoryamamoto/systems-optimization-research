@@ -134,9 +134,9 @@ class OPOM(object):
             Y[k+1] = self.C(0).dot(X[k])
             
         for i in range(self.ny):
-            plt.plot(Y[:,i], label='y{}'.format(i))
+            plt.plot(Y[:,i], label='y{}'.format(i+1))
         for i in range(self.nu):
-            plt.plot(U[1:,i], '--', label='u{}'.format(i))
+            plt.plot(U[1:,i], '--', label='u{}'.format(i+1))
         plt.legend(loc=4)
         #plt.savefig('../../img/opom_step.png')
         plt.show()
@@ -339,9 +339,18 @@ if __name__ == '__main__':
     h1 = signal.TransferFunction([1],[1, 1])
     h2 = signal.TransferFunction([2],[1, 1])
     
-    H3 = [[h1, h2, h2, h2, h2], [h1, h1, h2, h2, h2], [h1, h1, h1, h2, h2]]
+    H3 = [[h1, h1, h1, h1, h1], [h1, h1, h1, h1, h2], [h1, h1, h1, h2, h2]]
     nu = 5
     U3 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
     controller3 = IHMPCController(H3, Ts, m)
     controller3.output(U3, T)
+    
+    
+    hi = signal.TransferFunction([1],[1, 0])
+    
+    H4 = [[hi, h2, h2, h2], [hi, hi, h2, h2], [hi, hi, hi, h2],[hi, hi, hi, hi]]
+    nu = 4
+    U4 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
+    controller4 = IHMPCController(H4, Ts, m)
+    controller4.output(U4, T)
     
