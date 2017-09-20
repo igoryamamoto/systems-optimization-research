@@ -17,7 +17,7 @@ class OPOM(object):
         self.ny = self.H.shape[0]
         self.nu = self.H.shape[1]
         self.Ts = Ts
-        self.na = 1 # max order of Gij
+        self.na = self._max_order() # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
         self.X = np.zeros(self.nx)
@@ -28,7 +28,13 @@ class OPOM(object):
                                                          self.B.__repr__(), 
                                                          self.C.__repr__(), 
                                                          self.D.__repr__())
-        
+    def _max_order(self):
+        na = 0
+        for h in self.H.flatten():
+            na_h = len(h.den) - 1
+            na = max(na, na_h)
+        return na
+                
     def _get_coeff(self, b, a):
         # multiply by 1/s (step)
         a = np.append(a, 0)
@@ -353,4 +359,14 @@ if __name__ == '__main__':
     U4 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
     controller4 = IHMPCController(H4, Ts, m)
     controller4.output(U4, T)
+    
+    
+    h1 = signal.TransferFunction([1],[1, 1, 1])
+    h2 = signal.TransferFunction([2],[1, 1, 1])
+    
+    H3 = [[h1, h1, h1, h1, h1], [h1, h1, h1, h1, h2], [h1, h1, h1, h2, h2]]
+    nu = 5
+    U3 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
+    #controller3 = IHMPCController(H3, Ts, m)
+    #controller3.output(U3, T)
     

@@ -217,6 +217,7 @@ class Simulation(object):
         plt.plot(u2,'--', label='u2')
         plt.legend(loc=0, fontsize='small')
         plt.xlabel('sample time (k)')    
+        plt.show()
         #plt.savefig('sim8.png')
         return J, Status
 
