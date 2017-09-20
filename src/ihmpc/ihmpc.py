@@ -127,17 +127,18 @@ class OPOM(object):
         
     def output(self, U, T):
         tsim = np.size(T)
-        X = np.zeros((tsim,8))
-        Y = np.zeros((tsim,2))
+        X = np.zeros((tsim,self.nx))
+        Y = np.zeros((tsim,self.ny))
         for k in range(tsim-1):
             X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k+1]-U[k])
             Y[k+1] = self.C(0).dot(X[k])
-        plt.plot(Y[:,0], label='y1')
-        plt.plot(Y[:,1], label='y2')
-        plt.plot(U[1:,0], '--', label='u1')
-        plt.plot(U[1:,1], '--', label='u2')
+            
+        for i in range(self.ny):
+            plt.plot(Y[:,i], label='y{}'.format(i))
+        for i in range(self.nu):
+            plt.plot(U[1:,i], '--', label='u{}'.format(i))
         plt.legend(loc=4)
-        plt.savefig('../../img/opom_step.png')
+        #plt.savefig('../../img/opom_step.png')
         plt.show()
         #return U, Y
         
@@ -293,9 +294,13 @@ if __name__ == '__main__':
     h21 = signal.TransferFunction([-0.763],[31.8, 1])
     h22 = signal.TransferFunction([0.235],[1, 0])
     H = [[h11, h12], [h21, h22]]
+    H2 = [[h11, h12, h11, h12], [h21, h22, h21, h22]]
     Ts = 1
     m = 3
     controller = IHMPCController(H, Ts, m)
+    controller2 = IHMPCController(H2, Ts, m)
+    
+    
     A = controller.A
     B = controller.B
     C = controller.C
@@ -312,6 +317,9 @@ if __name__ == '__main__':
     Di_2n = controller.Di_2n
     Psi = controller.Psi
     Wn = controller.Wn
+    
+    
+    
     tsim = 100
     #U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
     import pickle
@@ -321,6 +329,19 @@ if __name__ == '__main__':
         u2 = pickle.load(f)
     U = np.vstack((u1,u2)).T
     T = np.arange(tsim)
-    
     controller.output(U, T)
+    
+    
+    U2 = np.vstack((u1,u2,u1,u2)).T
+    controller2.output(U2, T)
+    
+    
+    h1 = signal.TransferFunction([1],[1, 1])
+    h2 = signal.TransferFunction([2],[1, 1])
+    
+    H3 = [[h1, h2, h2, h2, h2], [h1, h1, h2, h2, h2], [h1, h1, h1, h2, h2]]
+    nu = 5
+    U3 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
+    controller3 = IHMPCController(H3, Ts, m)
+    controller3.output(U3, T)
     
