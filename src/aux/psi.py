@@ -15,6 +15,8 @@ def psi(t):
     na = 1
     R = np.array([np.array([ 0.]), np.array([-0.05128205]), np.array([-0.03144654]), np.array([ 0.])])
     R2 = np.array(list(map(lambda x: np.exp(x*t), R)))
+    print(R)
+    print(R2)
     psi = np.zeros((ny, nd))
     for i in range(ny):
         phi = np.array([])

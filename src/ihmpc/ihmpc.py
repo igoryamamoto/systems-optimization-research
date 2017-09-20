@@ -72,45 +72,42 @@ class OPOM(object):
             Psi[row, row*size:row*size+size] = np.ones(size)
         return Psi
 
-    def _build_OPOM(self):
-        b11 = self.H[0][0].num
-        a11 = self.H[0][0].den
-        # g12 = -1.7/(19.5*s+1)
-        b12 = self.H[0][1].num
-        a12 = self.H[0][1].den
-        # g21 = -0.763/(31.8*s+1)
-        b21 = self.H[1][0].num
-        a21 = self.H[1][0].den
-        # g22 = 0.235/s
-        b22 = self.H[1][1].num
-        a22 = self.H[1][1].den
-        
-        # Obtain coefficients of partial fractions of Gij/s
-        d0_11, dd_11, di_11, r_11 = self._get_coeff(b11, a11)
-        d0_12, dd_12, di_12, r_12 = self._get_coeff(b12, a12)
-        d0_21, dd_21, di_21, r_21 = self._get_coeff(b21, a21)
-        d0_22, dd_22, di_22, r_22 = self._get_coeff(b22, a22)
-        
-        R = np.array([r_11, r_12, r_21, r_22])
-        # Define matrices D0[nyxnu]. Dd[ndxnd], Di[nyxnu] for each Gij
-        D0 = np.vstack((np.hstack((d0_11, d0_12)),
-                       np.hstack((d0_21, d0_22))))
-        Di = np.vstack((np.hstack((di_11, di_12)),
-                       np.hstack((di_21, di_22))))
-        Dd = np.diag(dd_11.tolist() + dd_12.tolist() + dd_21.tolist() + dd_22.tolist());
-        
+    def _build_OPOM(self):        
+        D0 = np.zeros((self.nu*self.na))
+        Dd = np.array([])
+        Di = np.zeros((self.nu*self.na))
+        R = np.array([])
+        for i in range(self.ny):
+            d0_x = np.array([])
+            di_x = np.array([])
+            for j in range(self.nu):
+                b = self.H[i][j].num
+                a = self.H[i][j].den
+                d0, dd, di, r = self._get_coeff(b, a)
+                d0_x = np.hstack((d0_x, d0))
+                Dd = np.append(Dd, dd)
+                di_x = np.hstack((di_x, di))
+                R = np.append(R, r)
+            D0 = np.vstack((D0, d0_x))
+            Di = np.vstack((Di, di_x))
+        Dd = np.diag(Dd)
+        D0 = D0[1:]
+        Di = Di[1:]
+       
         # Define matrices F[ndxnd], J[nu.naxnu], N[ndxnu]
         J = self._create_J()
         
-        F = np.diag(np.exp(r_11.tolist() + r_12.tolist() + r_21.tolist() + r_22.tolist()))
+        F = np.diag(np.exp(R))
         
-        N = np.vstack((J, J))
+        N = J
+        for _ in range(self.ny-1):
+            N = np.vstack((N, J))
         
         a1 = np.hstack((np.eye(self.ny), np.zeros((self.ny,self.nd)), self.Ts*np.eye(self.ny)))
         a2 = np.hstack((np.zeros((self.nd,self.ny)), F, np.zeros((self.nd,self.ny))))
         a3 = np.hstack((np.zeros((self.ny,self.ny)), np.zeros((self.ny,self.nd)), np.eye(self.ny)))
         A = np.vstack((a1, a2, a3))
-        
+    
         B = np.vstack((D0+self.Ts*Di, Dd.dot(F).dot(N), Di))
         
         def psi(t):
@@ -119,7 +116,7 @@ class OPOM(object):
             for i in range(self.ny):
                 phi = np.array([])
                 for j in range(self.nu):
-                    phi = np.concatenate((phi, R2[i*self.nu+j]))
+                    phi = np.append(phi, R2[i*self.nu+j])
                 psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi      
             return psi
         
