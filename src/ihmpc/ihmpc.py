@@ -79,9 +79,9 @@ class OPOM(object):
         return Psi
 
     def _build_OPOM(self):        
-        D0 = np.zeros((self.nu*self.na))
+        D0 = np.zeros((self.nu))
         Dd = np.array([])
-        Di = np.zeros((self.nu*self.na))
+        Di = np.zeros((self.nu))
         R = np.array([])
         for i in range(self.ny):
             d0_x = np.array([])
@@ -122,7 +122,7 @@ class OPOM(object):
             for i in range(self.ny):
                 phi = np.array([])
                 for j in range(self.nu):
-                    phi = np.append(phi, R2[i*self.nu+j])
+                    phi = np.append(phi, R2[(i*self.nu+j)*self.na:(i*self.nu+j+1)*self.na])
                 psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi      
             return psi
         
@@ -306,7 +306,7 @@ if __name__ == '__main__':
     controller = IHMPCController(H, Ts, m)
     controller2 = IHMPCController(H2, Ts, m)
     
-    
+    '''
     A = controller.A
     B = controller.B
     C = controller.C
@@ -323,7 +323,7 @@ if __name__ == '__main__':
     Di_2n = controller.Di_2n
     Psi = controller.Psi
     Wn = controller.Wn
-    
+    '''
     
     
     tsim = 100
@@ -361,12 +361,12 @@ if __name__ == '__main__':
     controller4.output(U4, T)
     
     
-    h1 = signal.TransferFunction([1],[1, 1, 1])
-    h2 = signal.TransferFunction([2],[1, 1, 1])
+    hh1 = signal.TransferFunction([1],[1, 6, 5, 1])
+    hh2 = signal.TransferFunction([2],[1, 6, 5, 1])
     
-    H3 = [[h1, h1, h1, h1, h1], [h1, h1, h1, h1, h2], [h1, h1, h1, h2, h2]]
+    H5 = [[hh1, hh1, hh1, hh1, hh1], [hh1, hh1, hh1, hh1, hh2], [hh1, hh1, hh1, hh2, hh2]]
     nu = 5
-    U3 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
-    #controller3 = IHMPCController(H3, Ts, m)
-    #controller3.output(U3, T)
+    U5 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
+    controller5 = IHMPCController(H5, Ts, m)
+    controller5.output(U5, T)
     
