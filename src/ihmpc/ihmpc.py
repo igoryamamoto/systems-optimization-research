@@ -273,7 +273,7 @@ class IHMPCController(OPOM):
             c3 = (n**3 - n + 1/3)*Ts**3*self.Di_1n[n].T.dot(self.Q).dot(self.Di_1n[n])
             c = c1 + c2 + c3
             H_m += a + b + c
-        H_inf = self.Z.T.dot(self.W_m.T).dot(G2_inf - G2_m).dot(self.W_m).dot(self.Z)
+        H_inf = self.Z.T.dot(self.W_m.T).dot(G2(float('inf')) - G2(m)).dot(self.W_m).dot(self.Z)
         H = H_m + H_inf
         
         cf_m = 0
@@ -282,7 +282,7 @@ class IHMPCController(OPOM):
             b = (-self.Ts*e_s.T + (n - 1/2)*self.Ts**2*x_i.T + x_d.T*(G1(n)-G1(n-1)).T).dot(self.Q).dot(self.D0_n - self.Di_2n)
             c = (-(n - 1/2)*self.Ts**2*e_s.T + (n**3 - n + 1/3)*self.Ts**3*x_i.T + x_d.T*(G3(n) - G3(n - 1)).T).dot(self.Q).dot(self.Di_1n[n])
             cf_m += a + b + c 
-        cf_inf = x_d.T*(G2_inf - G2_m).dot(W_m).dot(self.Z)
+        cf_inf = x_d.T*(G2(float('inf') - G2(m)).dot(W_m).dot(self.Z)
         cf = cf_m + cf_inf
         
         sol = solvers.qp(P=H, q=cf)
