@@ -111,15 +111,18 @@ H_inf = Z.T.dot(Wn[m-1].T).dot(G2(float('inf'))-G2(m)).dot(Wn[m-1]).dot(Z)
 H = H_m + H_inf
 
 
-'''
+e_s = np.array([0.5, 0.9])
+x_i = np.array([0.4, -0.4])
+x_d = np.array([0, 0, 0, 0])
+
+
 cf_m = 0
 for n in range(m):
-    a = (-e_s.T.dot(Q).dot(G1(n, R)-G1(n-1, R)) + x_d.T * (G2(n, R)-G2(n-1, R)) + x_i.T.dot(Q.dot(G3(n, R)-G3(n-1, R))))*Wn[n]*Z
-    b = (-Ts*e_s.T + (n-1/2)*Ts**2*x_i.T+x_d.T*(G1(n, R)-G1(n-1, R)).T).dot(Q).dot(D0_n[n]-Di_2n[n])
-    c = (-(n-1/2)*Ts**2*e_s.T + (n**3-n+1/3)*Ts**3*x_i.T + x_d.T*(G3(n, R)-G3(n-1, R)).T).dot(Q).dot(Di_1n[n])
+    a = (-e_s.T.dot(Q).dot(G1(n)-G1(n-1)) + x_d.T.dot(G2(n)-G2(n-1)) + x_i.T.dot(Q).dot(G3(n)-G3(n-1))).dot(Wn[n]).dot(Z)
+    b = (-Ts*e_s.T + (n-1/2)*Ts**2*x_i.T + x_d.T.dot((G1(n) - G1(n-1)).T)).dot(Q).dot(D0_n[n]-Di_2n[n])
+    c = (-(n-1/2)*Ts**2*e_s.T + (n**3-n+1/3)*Ts**3*x_i.T + x_d.T.dot((G3(n)-G3(n-1)).T)).dot(Q).dot(Di_1n[n])
     cf_m += a + b + c 
 
-cf_inf = x_d.T*(G2_inf-G2_m).dot(W_m).dot(Z)
+cf_inf = x_d.T.dot(G2(float('inf'))-G2(m)).dot(Wn[m-1]).dot(Z)
 
 cf = cf_m + cf_inf
-'''

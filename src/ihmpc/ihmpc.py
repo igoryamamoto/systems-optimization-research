@@ -214,7 +214,7 @@ class IHMPCController(OPOM):
     
     
     def control(self):
-        def G1(self, n):
+        def G1(n):
             G = np.zeros((self.ny, self.nd))
             for i in range(self.ny):
                 phi = np.array([])
@@ -228,7 +228,7 @@ class IHMPCController(OPOM):
                 G[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi      
             return G
     
-        def G2(self, n):
+        def G2(n):
             G = np.array([])
             for y in range(self.ny):
                 r = self.R[y*self.nu:y*self.nu+self.nu]
@@ -243,7 +243,7 @@ class IHMPCController(OPOM):
                 G = block_diag(G, g)
             return G[1:]
         
-        def G3(self, n):
+        def G3(n):
             G = np.zeros((self.ny, self.nd))
             for i in range(self.ny):
                 phi = np.array([])
@@ -263,37 +263,46 @@ class IHMPCController(OPOM):
             return G         
             
         H_m = 0
-        for n in range(m):
-            a = self.Z.T.dot(self.Wn[n].T).dot(G2(n) - G2(n-1)).dot(self.Wn[n]).dot(self.Z)
-            b1 = (G1(n) - G1(n-1)).T.dot(self.Q).dot(self.D0_n[n] - self.Di_2n[n])
-            b2 = (G3(n) - G3(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
-            b3 = (G1(n) - G1(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
-            b = 2*self.Z.T.dot(self.Wn[n].T).dot(b1 + b2 + b3)
-            c1 = self.Ts[n]*(self.D0_n[n] - self.Di_2n[n]).T.dot(self.Q).dot(self.D0_n[n] - self.Di_2n[n])
-            c2 = 2*(n - 1/2)*Ts**2*(self.D0_n[n] - self.Di_2n[n]).T.dot(self.Q).dot(self.Di_1n[n])
-            c3 = (n**3 - n + 1/3)*Ts**3*self.Di_1n[n].T.dot(self.Q).dot(self.Di_1n[n])
+        for n in range(self.m):
+            a = self.Z.T.dot(self.Wn[n].T).dot(G2(n)-G2(n-1)).dot(self.Wn[n]).dot(self.Z)
+            b1 = (G1(n) - G1(n-1)).T.dot(self.Q).dot(self.D0_n[n]-self.Di_2n[n])
+            b2 = (G3(n)-G3(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
+            b3 = (G1(n)-G1(n-1)).T.dot(self.Q).dot(self.Di_1n[n])
+            b = 2*self.Z.T.dot(self.Wn[n].T).dot(b1+b2+b3)
+            c1 = Ts*(self.D0_n[n]-self.Di_2n[n]).T.dot(self.Q).dot(self.D0_n[n]-self.Di_2n[n])
+            c2 = 2*(n-1/2)*Ts**2*(self.D0_n[n]-self.Di_2n[n]).T.dot(self.Q).dot(self.Di_1n[n])
+            c3 = (n**3-n+1/3)*Ts**3*self.Di_1n[n].T.dot(self.Q).dot(self.Di_1n[n])
             c = c1 + c2 + c3
             H_m += a + b + c
-        H_inf = self.Z.T.dot(self.W_m.T).dot(G2(float('inf')) - G2(m)).dot(self.W_m).dot(self.Z)
+        
+        H_inf = self.Z.T.dot(self.Wn[m-1].T).dot(G2(float('inf'))-G2(m)).dot(self.Wn[m-1]).dot(self.Z)
+        
         H = H_m + H_inf
         
+        e_s = np.array([0.5, 0.9])
+        x_i = np.array([0.4, -0.4])
+        x_d = np.array([0, 0, 0, 0])
+        
+        
         cf_m = 0
-        for n in range(m):
-            a = (-e_s.T.dot(self.Q).dot(G1(n)-G1(n-1)) + x_d.T * (G2(n)-G2(n-1)) + x_i.T.dot(self.Q.dot(G3(n)-G3(n-1))))*self.Wn*self.Z
-            b = (-self.Ts*e_s.T + (n - 1/2)*self.Ts**2*x_i.T + x_d.T*(G1(n)-G1(n-1)).T).dot(self.Q).dot(self.D0_n - self.Di_2n)
-            c = (-(n - 1/2)*self.Ts**2*e_s.T + (n**3 - n + 1/3)*self.Ts**3*x_i.T + x_d.T*(G3(n) - G3(n - 1)).T).dot(self.Q).dot(self.Di_1n[n])
+        for n in range(self.m):
+            a = (-e_s.T.dot(self.Q).dot(G1(n)-G1(n-1)) + x_d.T.dot(G2(n)-G2(n-1)) + x_i.T.dot(self.Q).dot(G3(n)-G3(n-1))).dot(self.Wn[n]).dot(self.Z)
+            b = (-Ts*e_s.T + (n-1/2)*Ts**2*x_i.T + x_d.T.dot((G1(n) - G1(n-1)).T)).dot(self.Q).dot(self.D0_n[n]-self.Di_2n[n])
+            c = (-(n-1/2)*Ts**2*e_s.T + (n**3-n+1/3)*Ts**3*x_i.T + x_d.T.dot((G3(n)-G3(n-1)).T)).dot(self.Q).dot(self.Di_1n[n])
             cf_m += a + b + c 
-        cf_inf = x_d.T*(G2(float('inf') - G2(m))).dot(W_m).dot(self.Z)
+        
+        cf_inf = x_d.T.dot(G2(float('inf'))-G2(self.m)).dot(self.Wn[m-1]).dot(self.Z)
+        
         cf = cf_m + cf_inf
         
-        sol = solvers.qp(P=H, q=cf)
+        # sol = solvers.qp(P=H_m, q=cf_m)
         # minimize    (1/2)*x'*P*x + q'*x 
         # subject to  G*x <= h      
         #             A*x = b.
-        du = list(sol['x'])
+        # du = list(sol['x'])
         # s = sol['status']
         # j = sol['primal objective']
-        return du
+        return H, cf
 
 if __name__ == '__main__':
     h11 = signal.TransferFunction([-0.19],[1, 0])
