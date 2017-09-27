@@ -6,6 +6,15 @@ Created on Wed Sep  6 10:05:34 2017
 @author: peixeboi
 """
 import numpy as np
+m = 3
+ny = 2
+z = Dd.dot(N)
+Z = z
+for i in range(m-1):
+    Z = block_diag(Z,z)
+
+Q = np.eye(ny) # verificar dimensão
+
 def psi(t):
     ny = 2
     nd = 4
@@ -55,7 +64,7 @@ def G2(n):
                 if gzin == 0:
                     g[i, j] = n
                 else:
-                    g[i, j] = 1/gzin*(np.exp(gzin)-1)
+                    g[i, j] = 1/gzin*(np.exp(gzin*n)-1)
         G = block_diag(G, g)
     return G[1:]
         
@@ -74,21 +83,22 @@ def G3(n):
         if 0 in phi:
             def aux(x):
                 if x==0:
-                    return 0
+                    return n
                 else:
-                    return (1/x**2)*np.exp(x*n)*(x*n-1)
+                    return (1/x**2)*(np.exp(x*n)*(x*n-1)+1)
             phi = np.array(list(map(aux, phi)))
         else:
             phi = np.zeros(nu)
         G[i, i*nu*na:(i+1)*nu*na] = phi 
     return G
 
+
 H_m = 0
 for n in range(m):
-    a = Z.T.dot(Wn[n].T).dot(G2(n, R)-G2(n-1, R)).dot(Wn[n]).dot(Z)
+    a = Z.T.dot(Wn[n].T).dot(G2(n)-G2(n-1)).dot(Wn[n]).dot(Z)
     b1 = (G1(n) - G1(n-1)).T.dot(Q).dot(D0_n[n]-Di_2n[n])
-    b2 = (G3(n, R)-G3(n-1, R)).T.dot(Q).dot(Di_1n[n])
-    b3 = (G1(n, R)-G1(n-1, R)).T.dot(Q).dot(Di_1n[n])
+    b2 = (G3(n)-G3(n-1)).T.dot(Q).dot(Di_1n[n])
+    b3 = (G1(n)-G1(n-1)).T.dot(Q).dot(Di_1n[n])
     b = 2*Z.T.dot(Wn[n].T).dot(b1+b2+b3)
     c1 = Ts*(D0_n[n]-Di_2n[n]).T.dot(Q).dot(D0_n[n]-Di_2n[n])
     c2 = 2*(n-1/2)*Ts**2*(D0_n[n]-Di_2n[n]).T.dot(Q).dot(Di_1n[n])
@@ -96,10 +106,12 @@ for n in range(m):
     c = c1 + c2 + c3
     H_m += a + b + c
 
-H_inf = Z.T.dot(W_m.T).dot(G2_inf-G2_m).dot(W_m).dot(Z)
+H_inf = Z.T.dot(Wn[m-1].T).dot(G2(float('inf'))-G2(m)).dot(Wn[m-1]).dot(Z)
 
 H = H_m + H_inf
 
+
+'''
 cf_m = 0
 for n in range(m):
     a = (-e_s.T.dot(Q).dot(G1(n, R)-G1(n-1, R)) + x_d.T * (G2(n, R)-G2(n-1, R)) + x_i.T.dot(Q.dot(G3(n, R)-G3(n-1, R))))*Wn[n]*Z
@@ -110,3 +122,4 @@ for n in range(m):
 cf_inf = x_d.T*(G2_inf-G2_m).dot(W_m).dot(Z)
 
 cf = cf_m + cf_inf
+'''

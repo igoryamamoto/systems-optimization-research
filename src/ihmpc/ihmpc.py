@@ -235,7 +235,11 @@ class IHMPCController(OPOM):
                 g = np.zeros((self.nu, self.nu))
                 for i in range(self.nu):
                     for j in range(self.nu):
-                        g[i, j] = r[i] + r[j]
+                        gzin = r[i] + r[j]
+                        if gzin == 0:
+                            g[i, j] = n
+                        else:
+                            g[i, j] = 1/gzin*(np.exp(gzin*n)-1)
                 G = block_diag(G, g)
             return G[1:]
         
@@ -249,17 +253,14 @@ class IHMPCController(OPOM):
                 if 0 in phi:
                     def aux(x):
                         if x==0:
-                            return 0
+                            return n
                         else:
                             return (1/x**2)*np.exp(x*n)*(x*n-1)
                     phi = np.array(list(map(aux, phi)))
                 else:
                     phi = np.zeros(nu)
                 G[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi 
-            return G
-            
-            
-            
+            return G         
             
         H_m = 0
         for n in range(m):
@@ -282,7 +283,7 @@ class IHMPCController(OPOM):
             b = (-self.Ts*e_s.T + (n - 1/2)*self.Ts**2*x_i.T + x_d.T*(G1(n)-G1(n-1)).T).dot(self.Q).dot(self.D0_n - self.Di_2n)
             c = (-(n - 1/2)*self.Ts**2*e_s.T + (n**3 - n + 1/3)*self.Ts**3*x_i.T + x_d.T*(G3(n) - G3(n - 1)).T).dot(self.Q).dot(self.Di_1n[n])
             cf_m += a + b + c 
-        cf_inf = x_d.T*(G2(float('inf') - G2(m)).dot(W_m).dot(self.Z)
+        cf_inf = x_d.T*(G2(float('inf') - G2(m))).dot(W_m).dot(self.Z)
         cf = cf_m + cf_inf
         
         sol = solvers.qp(P=H, q=cf)
@@ -306,7 +307,7 @@ if __name__ == '__main__':
     controller = IHMPCController(H, Ts, m)
     controller2 = IHMPCController(H2, Ts, m)
     
-    '''
+    
     A = controller.A
     B = controller.B
     C = controller.C
@@ -323,7 +324,7 @@ if __name__ == '__main__':
     Di_2n = controller.Di_2n
     Psi = controller.Psi
     Wn = controller.Wn
-    '''
+
     
     
     tsim = 100
