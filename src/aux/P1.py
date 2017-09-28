@@ -72,29 +72,35 @@ for i in range(1, m+1):
 
 H_m = 0
 for n in range(m):
-    a = Z.T.dot(W_n.T).dot(G2(n)-G2(n-1)).dot(W_n).dot(Z)
-    b1 = (G1(n)-G1(n-1)).T.dot(Q).dot(D0_n-Di_2n)
-    b2 = (G3(n)-G3(n-1)).T.dot(Q).dot(Di_1n)
-    b3 = (G1(n)-G1(n-1)).T.dot(Q).dot(Di_1n)
-    b = 2*Z.T.dot(W_n.T).dot(b1+b2+b3)
-    c1 = Ts*(D0_n-Di_2n).T.dot(Q).dot(D0_n-Di_2n)
-    c2 = 2*(n-1/2)*Ts**2*(D0_n-Di_2n).T.dot(Q).dot(Di_1n)
-    c3 = (n**3-n+1/3)*Ts**3*Di_1n.T.dot(Q).dot(Di_1n)
+    a = Z.T.dot(Wn[n].T).dot(G2(n)-G2(n-1)).dot(Wn[n]).dot(Z)
+    b1 = (G1(n) - G1(n-1)).T.dot(Q).dot(D0_n[n]-Di_2n[n])
+    b2 = (G3(n)-G3(n-1)).T.dot(Q).dot(Di_1n[n])
+    b3 = (G1(n)-G1(n-1)).T.dot(Q).dot(Di_1n[n])
+    b = 2*Z.T.dot(Wn[n].T).dot(b1+b2+b3)
+    c1 = Ts*(D0_n[n]-Di_2n[n]).T.dot(Q).dot(D0_n[n]-Di_2n[n])
+    c2 = 2*(n-1/2)*Ts**2*(D0_n[n]-Di_2n[n]).T.dot(Q).dot(Di_1n[n])
+    c3 = (n**3-n+1/3)*Ts**3*Di_1n[n].T.dot(Q).dot(Di_1n[n])
     c = c1 + c2 + c3
     H_m += a + b + c
 
-H_inf = Z.T.dot(W_m.T).dot(G2_inf-G2_m).dot(W_m).dot(Z)
+H_inf = Z.T.dot(Wn[m-1].T).dot(G2(float('inf'))-G2(m)).dot(Wn[m-1]).dot(Z)
 
 H = H_m + H_inf
 
+
+e_s = np.array([0.5, 0.9])
+x_i = np.array([0.4, -0.4])
+x_d = np.array([0, 0, 0, 0])
+
+
 cf_m = 0
 for n in range(m):
-    a = (-e_s.T.dot(Q).dot(G1(n)-G1(n-1)) + x_d.T * (G2(n)-G2(n-1)) + x_i.T.dot(Q.dot(G3(n)-G3(n-1))))*W_n*Z
-    b = (-Ts*e_s.T + (n-1/2)*Ts**2*x_i.T+x_d.T*(G1(n)-G1(n-1)).T).dot(Q).dot(D0_n-Di_2n)
-    c = (-(n-1/2)*Ts**2*e_s.T + (n**3-n+1/3)*Ts**3*x_i.T + x_d.T*(G3(n)-G3(n-1)).T).dot(Q).dot(Di_1n)
+    a = (-e_s.T.dot(Q).dot(G1(n)-G1(n-1)) + x_d.T.dot(G2(n)-G2(n-1)) + x_i.T.dot(Q).dot(G3(n)-G3(n-1))).dot(Wn[n]).dot(Z)
+    b = (-Ts*e_s.T + (n-1/2)*Ts**2*x_i.T + x_d.T.dot((G1(n) - G1(n-1)).T)).dot(Q).dot(D0_n[n]-Di_2n[n])
+    c = (-(n-1/2)*Ts**2*e_s.T + (n**3-n+1/3)*Ts**3*x_i.T + x_d.T.dot((G3(n)-G3(n-1)).T)).dot(Q).dot(Di_1n[n])
     cf_m += a + b + c 
 
-cf_inf = x_d.T*(G2_inf-G2_m).dot(W_m).dot(Z)
+cf_inf = x_d.T.dot(G2(float('inf'))-G2(m)).dot(Wn[m-1]).dot(Z)
 
 cf = cf_m + cf_inf
 

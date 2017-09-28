@@ -62,7 +62,7 @@ def G2(n):
             for j in range(nu):
                 gzin = r[i] + r[j]
                 if gzin == 0:
-                    g[i, j] = n
+                    g[i, j] = 0
                 else:
                     g[i, j] = 1/gzin*(np.exp(gzin*n)-1)
         G = block_diag(G, g)

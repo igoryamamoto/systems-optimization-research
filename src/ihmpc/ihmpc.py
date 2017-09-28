@@ -154,7 +154,7 @@ class IHMPCController(OPOM):
         super().__init__(H, Ts)
         self.m = m # control horizon
         self.Q = np.eye(self.ny)
-        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn = self._make_matrices()
+        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._make_matrices()
     
     def _make_matrices(self):
         def faz_D0n_ou_Di1n(D, n, m):
@@ -209,8 +209,18 @@ class IHMPCController(OPOM):
         Wn = []
         for i in range(1, self.m + 1):
             Wn.append(faz_Wn(self.F, i, self.m))
+        
+        Di_1m = self.Di
+        for _ in range(m-1):
+            Di_1m = np.hstack((Di_1m, self.Di))
             
-        return Z, D0_n, Di_1n, Di_2n, Wn
+        Di_3m = self.m*self.Ts*Di_1m-Di_2n[self.m-1]
+        D0_m = D0_n[self.m-1]
+        Di_1m = Di_1n[self.m-1]
+        
+        Aeq = np.vstack((D0_m+Di_3m, Di_1m))
+        
+        return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
     
     
     def control(self):
@@ -237,7 +247,7 @@ class IHMPCController(OPOM):
                     for j in range(self.nu):
                         gzin = r[i] + r[j]
                         if gzin == 0:
-                            g[i, j] = n
+                            g[i, j] = 0
                         else:
                             g[i, j] = 1/gzin*(np.exp(gzin*n)-1)
                 G = block_diag(G, g)
@@ -258,7 +268,7 @@ class IHMPCController(OPOM):
                             return (1/x**2)*np.exp(x*n)*(x*n-1)
                     phi = np.array(list(map(aux, phi)))
                 else:
-                    phi = np.zeros(nu)
+                    phi = np.zeros(self.nu)
                 G[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi 
             return G         
             
@@ -279,7 +289,7 @@ class IHMPCController(OPOM):
         
         H = H_m + H_inf
         
-        e_s = np.array([0.5, 0.9])
+        e_s = np.array([0, 0])
         x_i = np.array([0.4, -0.4])
         x_d = np.array([0, 0, 0, 0])
         
@@ -294,16 +304,24 @@ class IHMPCController(OPOM):
         cf_inf = x_d.T.dot(G2(float('inf'))-G2(self.m)).dot(self.Wn[m-1]).dot(self.Z)
         
         cf = cf_m + cf_inf
-        
-        # sol = solvers.qp(P=H_m, q=cf_m)
+        beq =  np.hstack((e_s - self.m*self.Ts*x_i, -x_i)).T
+        #sol = solvers.qp(P=H, q=cf, A=self.Aeq, b=beq)
         # minimize    (1/2)*x'*P*x + q'*x 
         # subject to  G*x <= h      
         #             A*x = b.
-        # du = list(sol['x'])
+        #du = list(sol['x'])
         # s = sol['status']
         # j = sol['primal objective']
         return H, cf
 
+
+class Simulation(object):
+    def __init__(self, controller):
+        self.controller = controller
+        
+    def run(self):
+        return self.controller.control()
+        
 if __name__ == '__main__':
     h11 = signal.TransferFunction([-0.19],[1, 0])
     h12 = signal.TransferFunction([-1.7],[19.5, 1])
@@ -333,6 +351,7 @@ if __name__ == '__main__':
     Di_2n = controller.Di_2n
     Psi = controller.Psi
     Wn = controller.Wn
+    Aeq = controller.Aeq
 
     
     
@@ -347,7 +366,11 @@ if __name__ == '__main__':
     T = np.arange(tsim)
     controller.output(U, T)
     
+    sim = Simulation(controller)
+    H, cf = sim.run()
+    print(H, '\n\n', cf)
     
+'''   
     U2 = np.vstack((u1,u2,u1,u2)).T
     controller2.output(U2, T)
     
@@ -379,4 +402,4 @@ if __name__ == '__main__':
     U5 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
     controller5 = IHMPCController(H5, Ts, m)
     controller5.output(U5, T)
-    
+'''   
