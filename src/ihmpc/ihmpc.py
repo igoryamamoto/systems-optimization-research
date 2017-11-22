@@ -125,7 +125,7 @@ class OPOM(object):
                         np.eye(self.ny)))
         A = np.vstack((a1, a2, a3))
 
-        B = np.vstack((self.D0+self.Ts*self.Di, 
+        B = np.vstack((self.D0+self.Ts*self.Di,
                        self.Dd.dot(self.F).dot(self.N),
                        self.Di))
 
@@ -136,24 +136,7 @@ class OPOM(object):
 
         return A, B, C, D
 
-    def output(self, U, T):
-        tsim = np.size(T)
-        X = np.zeros((tsim, self.nx))
-        Y = np.zeros((tsim, self.ny))
-        for k in range(tsim-1):
-            X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k+1]-U[k])
-            Y[k+1] = self.C(0).dot(X[k])
-
-        for i in range(self.ny):
-            plt.plot(Y[:, i], label='y{}'.format(i+1))
-        for i in range(self.nu):
-            plt.plot(U[1:, i], '--', label='u{}'.format(i+1))
-        plt.legend(loc=4)
-        # plt.savefig('../../img/opom_step.png')
-        plt.show()
-        # return U, Y
-
-    def output2(self, du1, du2, samples):
+    def output(self, du1, du2, samples):
         U = np.vstack((du1, du2)).T
         X = np.zeros((samples+1, self.nx))
         X[0] = self.X
@@ -165,25 +148,22 @@ class OPOM(object):
 
         self.X = X[samples]
         return X, Y
-        # for i in range(self.ny):
-        #    plt.plot(Y[:,i], label='y{}'.format(i+1))
-        # for i in range(self.nu):
-        #    plt.plot(U[1:,i], '--', label='u{}'.format(i+1))
-        # plt.legend(loc=4)
-        # plt.savefig('../../img/opom_step.png')
-        # plt.show()
-        # return U, Y
 
 
-class IHMPCController(OPOM):
+class IHMPCController(object):
     def __init__(self, H, Ts, m):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
-        super().__init__(H, Ts)
+        self.Ts = Ts
+        self.opom = OPOM(H, Ts)
+        self.ny = self.opom.ny
+        self.nu = self.opom.nu
+        self.na = self.opom.na
+        self.nd = self.opom.nd
         self.m = m  # control horizon
         self.Q = np.eye(self.ny)
-        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._make_matrices()
+        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._create_matrices()
 
-    def _make_matrices(self):
+    def _create_matrices(self):
         def faz_D0n_ou_Di1n(D, n, m):
             D_n = D
             for i in range(m-1):
@@ -216,30 +196,30 @@ class IHMPCController(OPOM):
                 Wn = np.concatenate((Wn, wn), axis=1)
             return Wn
 
-        z = self.Dd.dot(self.N)
+        z = self.opom.Dd.dot(self.opom.N)
         Z = z
         for i in range(self.m - 1):
             Z = block_diag(Z, z)
 
         D0_n = []
         for i in range(1, self.m + 1):
-            D0_n.append(faz_D0n_ou_Di1n(self.D0, i, self.m))
+            D0_n.append(faz_D0n_ou_Di1n(self.opom.D0, i, self.m))
 
         Di_1n = []
         for i in range(1, self.m + 1):
-            Di_1n.append(faz_D0n_ou_Di1n(self.Di, i, self.m))
+            Di_1n.append(faz_D0n_ou_Di1n(self.opom.Di, i, self.m))
 
         Di_2n = []
         for i in range(m):
-            Di_2n.append(faz_Di2n(self.Di, i, self.m))
+            Di_2n.append(faz_Di2n(self.opom.Di, i, self.m))
 
         Wn = []
         for i in range(1, self.m + 1):
-            Wn.append(faz_Wn(self.F, i, self.m))
+            Wn.append(faz_Wn(self.opom.F, i, self.m))
 
-        Di_1m = self.Di
+        Di_1m = self.opom.Di
         for _ in range(m-1):
-            Di_1m = np.hstack((Di_1m, self.Di))
+            Di_1m = np.hstack((Di_1m, self.opom.Di))
 
         Di_3m = self.m*self.Ts*Di_1m-Di_2n[self.m-1]
         D0_m = D0_n[self.m-1]
@@ -255,7 +235,7 @@ class IHMPCController(OPOM):
             for i in range(self.ny):
                 phi = np.array([])
                 for j in range(self.nu):
-                    r = self.R[i*self.nu+j]
+                    r = self.opom.R[i*self.nu+j]
                     if r == 0:
                         g = n
                     else:
@@ -267,7 +247,7 @@ class IHMPCController(OPOM):
         def G2(n):
             G = np.array([])
             for y in range(self.ny):
-                r = self.R[y*self.nu:y*self.nu+self.nu]
+                r = self.opom.R[y*self.nu:y*self.nu+self.nu]
                 g = np.zeros((self.nu, self.nu))
                 for i in range(self.nu):
                     for j in range(self.nu):
@@ -284,7 +264,7 @@ class IHMPCController(OPOM):
             for i in range(self.ny):
                 phi = np.array([])
                 for j in range(self.nu):
-                    r = self.R[i*self.nu+j]
+                    r = self.opom.R[i*self.nu+j]
                     phi = np.append(phi, r)
                 if 0 in phi:
                     def aux(x):
@@ -381,7 +361,7 @@ if __name__ == '__main__':
     du1 = np.array([-0.7687, 0.6665, 0.6310])
     du2 = np.array([0.7352, -0.5667, -0.6973])
 
-    X, Y = o.output2(du1, du2, 3)
+    X, Y = o.output(du1, du2, 3)
 
     # s1 = signal.step(h11,T=np.arange(100)*0.01+0.01)
     # s2 = signal.step(h12,T=np.arange(100)*0.01+0.01)
@@ -404,71 +384,25 @@ if __name__ == '__main__':
     print('Y=\n', Y)
     # print('Y2=\n', Y2)
 
-    A = controller.A
-    B = controller.B
-    C = controller.C
-    D = controller.D
-    D0 = controller.D0
-    Dd = controller.Dd
-    Di = controller.Di
-    N = controller.N
-    F = controller.F
+    A = controller.opom.A
+    B = controller.opom.B
+    C = controller.opom.C
+    D = controller.opom.D
+    D0 = controller.opom.D0
+    Dd = controller.opom.Dd
+    Di = controller.opom.Di
+    N = controller.opom.N
+    F = controller.opom.F
     Z = controller.Z
-    R = controller.R
+    R = controller.opom.R
     D0_n = controller.D0_n
     Di_1n = controller.Di_1n
     Di_2n = controller.Di_2n
-    Psi = controller.Psi
+    Psi = controller.opom.Psi
     Wn = controller.Wn
     Aeq = controller.Aeq
-
-    tsim = 100
-    # U = np.vstack(( [0,0] ,np.ones((tsim-1,2)) ))
-    import pickle
-    with open('u1.pickle', 'rb') as f:
-        u1 = pickle.load(f)
-    with open('u2.pickle', 'rb') as f:
-        u2 = pickle.load(f)
-
-    U = np.vstack((u1, u2)).T
-    T = np.arange(tsim)
-    controller.output(U, T)
 
     sim = Simulation(controller)
 
     H, cf, beq = sim.run()
     # print(H, '\n\n', cf)
-
-'''
-    U2 = np.vstack((u1,u2,u1,u2)).T
-    controller2.output(U2, T)
-
-
-    h1 = signal.TransferFunction([1],[1, 1])
-    h2 = signal.TransferFunction([2],[1, 1])
-
-    H3 = [[h1, h1, h1, h1, h1], [h1, h1, h1, h1, h2], [h1, h1, h1, h2, h2]]
-    nu = 5
-    U3 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
-    controller3 = IHMPCController(H3, Ts, m)
-    controller3.output(U3, T)
-
-
-    hi = signal.TransferFunction([1],[1, 0])
-
-    H4 = [[hi, h2, h2, h2], [hi, hi, h2, h2], [hi, hi, hi, h2],[hi, hi, hi, hi]]
-    nu = 4
-    U4 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
-    controller4 = IHMPCController(H4, Ts, m)
-    controller4.output(U4, T)
-
-
-    hh1 = signal.TransferFunction([1],[1, 6, 5, 1])
-    hh2 = signal.TransferFunction([2],[1, 6, 5, 1])
-
-    H5 = [[hh1, hh1, hh1, hh1, hh1], [hh1, hh1, hh1, hh1, hh2], [hh1, hh1, hh1, hh2, hh2]]
-    nu = 5
-    U5 = np.vstack(( [0]*nu ,np.ones((tsim-1,nu)) ))
-    controller5 = IHMPCController(H5, Ts, m)
-    controller5.output(U5, T)
-'''
