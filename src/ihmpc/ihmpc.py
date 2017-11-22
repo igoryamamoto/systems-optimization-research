@@ -229,7 +229,7 @@ class IHMPCController(object):
 
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
 
-    def calculate_control(self):
+    def calculate_control(self, e_s, x_d, x_i):
         def G1(n):
             G = np.zeros((self.ny, self.nd))
             for i in range(self.ny):
@@ -295,11 +295,6 @@ class IHMPCController(object):
 
         H = H_m + H_inf
 
-        e_s = np.array([1 - 2.292925, 1 - 0.3075793])
-
-        x_d = np.array([0, -1.39258457, 0.64501061, 0])
-        x_i = np.array([-0.133836, -0.165534])
-
         cf_m = 0
         for n in range(self.m):
             a = (-e_s.T.dot(self.Q).dot(G1(n)-G1(n-1)) + x_d.T.dot(G2(n)-G2(n-1)) + x_i.T.dot(self.Q).dot(G3(n)-G3(n-1))).dot(self.Wn[n]).dot(self.Z)
@@ -311,7 +306,7 @@ class IHMPCController(object):
 
         cf = cf_m + cf_inf
         beq = np.hstack((e_s - self.m*self.Ts*x_i, -x_i)).T
-        #sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
+        # sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
         # minimize    (1/2)*x'*P*x + q'*x
         # subject to  G*x <= h
         #             A*x = b.
@@ -326,7 +321,10 @@ class Simulation(object):
         self.controller = controller
 
     def run(self):
-        return self.controller.calculate_control()
+        e_s = np.array([1 - 2.292925, 1 - 0.3075793])
+        x_d = np.array([0, -1.39258457, 0.64501061, 0])
+        x_i = np.array([-0.133836, -0.165534])
+        return self.controller.calculate_control(e_s, x_d, x_i)
 
 
 if __name__ == '__main__':
@@ -363,26 +361,8 @@ if __name__ == '__main__':
 
     X, Y = o.output(du1, du2, 3)
 
-    # s1 = signal.step(h11,T=np.arange(100)*0.01+0.01)
-    # s2 = signal.step(h12,T=np.arange(100)*0.01+0.01)
-    # s3 = signal.step(h21,T=np.arange(100)*0.01+0.01)
-    # s4 = signal.step(h22,T=np.arange(100)*0.01+0.01)
-    # s1 = s1[1][-1]
-    # s2 = s2[1][-1]
-    # s3 = s3[1][-1]
-    # s4 = s4[1][-1]
-    # s11 = -0.18810000000000013
-    # s12 = -0.084153415443706123
-    # s21 = -0.023387828820529824
-    # s22 = 0.23265000000000013
-    # Y2 = np.zeros((4,2))
-    # Y2[0] = o.C(0).dot(X[0])
-    # for i in range(len(du1)):
-    #     Y2[i+1] = Y2[i] + [s11*du1[i] + s12*du2[i], s21*du1[i] + s22*du2[i]]
-
     print('X=\n', X)
     print('Y=\n', Y)
-    # print('Y2=\n', Y2)
 
     A = controller.opom.A
     B = controller.opom.B
