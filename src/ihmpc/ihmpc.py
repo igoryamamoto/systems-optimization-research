@@ -21,7 +21,8 @@ class OPOM(object):
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
         self.X = np.zeros(self.nx)
-        self.A, self.B, self.C, self.D, self.D0, self.Di, self.Dd, self.J, self.F, self.N, self.Psi, self.R = self._build_OPOM()
+        self.R, self.D0, self.Di, self.Dd, self.F, self.N = self._create_matrices()
+        self.A, self.B, self.C, self.D = self._create_state_space()
 
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(),
@@ -66,20 +67,7 @@ class OPOM(object):
             d_i = np.append(d_i, 0)
         return d_s, d_d, d_i, poles
 
-    def _create_J(self):
-        J = np.zeros((self.nu*self.na, self.nu))
-        for col in range(self.nu):
-            J[col*self.na:col*self.na+self.na, col] = np.ones(self.na)
-        return J
-
-    def _create_psi(self):
-        Psi = np.zeros((self.ny, self.nd))
-        size = self.nu*self.na
-        for row in range(self.ny):
-            Psi[row, row*size:row*size+size] = np.ones(size)
-        return Psi
-
-    def _build_OPOM(self):
+    def _create_matrices(self):
         D0 = np.zeros((self.nu))
         Dd = np.array([])
         Di = np.zeros((self.nu))
@@ -102,42 +90,51 @@ class OPOM(object):
         Di = Di[1:]
 
         # Define matrices F[ndxnd], J[nu.naxnu], N[ndxnu]
-        J = self._create_J()
-
         F = np.diag(np.exp(R))
+
+        J = np.zeros((self.nu*self.na, self.nu))
+        for col in range(self.nu):
+            J[col*self.na:col*self.na+self.na, col] = np.ones(self.na)
 
         N = J
         for _ in range(self.ny-1):
             N = np.vstack((N, J))
 
+        return R, D0, Di, Dd, F, N
+
+    def Psi(self, t):
+        R2 = np.array(list(map(lambda x: np.exp(x*t), self.R)))
+        psi = np.zeros((self.ny, self.nd))
+        for i in range(self.ny):
+            phi = np.array([])
+            for j in range(self.nu):
+                phi = np.append(phi, R2[(i*self.nu+j)*self.na:
+                                        (i*self.nu + j + 1)*self.na])
+            psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi
+        return psi
+
+    def _create_state_space(self):
         a1 = np.hstack((np.eye(self.ny),
                         np.zeros((self.ny, self.nd)),
                         self.Ts*np.eye(self.ny)))
         a2 = np.hstack((np.zeros((self.nd, self.ny)),
-                        F,
+                        self.F,
                         np.zeros((self.nd, self.ny))))
         a3 = np.hstack((np.zeros((self.ny, self.ny)),
                         np.zeros((self.ny, self.nd)),
                         np.eye(self.ny)))
         A = np.vstack((a1, a2, a3))
 
-        B = np.vstack((D0+self.Ts*Di, Dd.dot(F).dot(N), Di))
-
-        def psi(t):
-            R2 = np.array(list(map(lambda x: np.exp(x*t), R)))
-            psi = np.zeros((self.ny, self.nd))
-            for i in range(self.ny):
-                phi = np.array([])
-                for j in range(self.nu):
-                    phi = np.append(phi, R2[(i*self.nu+j)*self.na:(i*self.nu + j + 1)*self.na])
-                psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi
-            return psi
+        B = np.vstack((self.D0+self.Ts*self.Di, 
+                       self.Dd.dot(self.F).dot(self.N),
+                       self.Di))
 
         def C(t):
-            return np.hstack((np.eye(self.ny), psi(t), np.eye(self.ny)*t))
+            return np.hstack((np.eye(self.ny), self.Psi(t), np.eye(self.ny)*t))
 
         D = np.zeros((self.ny, self.nu))
-        return A, B, C, D, D0, Di, Dd, J, F, N, psi, R
+
+        return A, B, C, D
 
     def output(self, U, T):
         tsim = np.size(T)
@@ -252,7 +249,7 @@ class IHMPCController(OPOM):
 
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
 
-    def control(self):
+    def calculate_control(self):
         def G1(n):
             G = np.zeros((self.ny, self.nd))
             for i in range(self.ny):
@@ -334,7 +331,7 @@ class IHMPCController(OPOM):
 
         cf = cf_m + cf_inf
         beq = np.hstack((e_s - self.m*self.Ts*x_i, -x_i)).T
-        # sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
+        #sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
         # minimize    (1/2)*x'*P*x + q'*x
         # subject to  G*x <= h
         #             A*x = b.
@@ -349,7 +346,7 @@ class Simulation(object):
         self.controller = controller
 
     def run(self):
-        return self.controller.control()
+        return self.controller.calculate_control()
 
 
 if __name__ == '__main__':
