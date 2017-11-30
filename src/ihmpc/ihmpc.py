@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 from scipy import signal
 from scipy.linalg import block_diag
+from scipy.io import savemat
 
 
 class OPOM(object):
@@ -136,18 +137,18 @@ class OPOM(object):
 
         return A, B, C, D
 
-    def output(self, du1, du2, samples):
-        U = np.vstack((du1, du2)).T
+    def output(self, du):
+        samples = du1.size
         X = np.zeros((samples+1, self.nx))
         X[0] = self.X
         Y = np.zeros((samples+1, self.ny))
         Y[0] = self.C(0).dot(X[0])
         for k in range(samples):
-            X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k])
+            X[k+1] = self.A.dot(X[k]) + self.B.dot(du[k])
             Y[k+1] = self.C(0).dot(X[k+1])
 
         self.X = X[samples]
-        return X, Y
+        return Y
 
 
 class IHMPCController(object):
@@ -226,6 +227,12 @@ class IHMPCController(object):
         Di_1m = Di_1n[self.m-1]
 
         Aeq = np.vstack((D0_m+Di_3m, Di_1m))
+        
+        #constraint du max 0.2
+        Aeq = np.vstack((Aeq, np.eye(6)))
+        
+        Aeq = np.vstack((Aeq, -np.eye(6)))
+        
 
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
 
@@ -306,6 +313,12 @@ class IHMPCController(object):
 
         cf = cf_m + cf_inf
         beq = np.hstack((e_s - self.m*self.Ts*x_i, -x_i)).T
+        
+        # constraint du max 0.2
+        beq = np.hstack((beq, np.ones(6)*100))
+        beq = np.hstack((beq, np.ones(6)*100))
+        
+        
         # sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
         # minimize    (1/2)*x'*P*x + q'*x
         # subject to  G*x <= h
@@ -313,56 +326,46 @@ class IHMPCController(object):
         # du = list(sol['x'])
         # s = sol['status']
         # j = sol['primal objective']
-        return H, cf, beq
+        return H, cf, self.Aeq, beq
 
 
 class Simulation(object):
     def __init__(self, controller):
         self.controller = controller
+        self.w = 0 
 
-    def run(self):
-        e_s = np.array([1 - 2.292925, 1 - 0.3075793])
-        x_d = np.array([0, -1.39258457, 0.64501061, 0])
-        x_i = np.array([-0.133836, -0.165534])
-        return self.controller.calculate_control(e_s, x_d, x_i)
+    def run(self, X0, du):
+        o = self.controller.opom
+        o.X = X0
+        Y = 1#o.output(du)
+        X = o.X
+        
+        e_s = np.array([self.w - o.X[0], self.w - o.X[1]])
+        x_d = o.X[2:6]  # np.array([0, 0, 0, 0])
+        x_i = np.append(o.X[6], o.X[7])
+        
+        print('e_s: ', e_s)
+        print('x_d: ', x_d)
+        print('x_i: ', x_i)
+        
+        
+        H, cf, Aeq, beq = self.controller.calculate_control(e_s, x_d, x_i)
+        
+        return X, Y, H, cf, Aeq, beq
 
 
 if __name__ == '__main__':
     h11 = signal.TransferFunction([-0.19], [1, 0])
+    #h11 = signal.TransferFunction([-0.19], [1, 1])
     h12 = signal.TransferFunction([-1.7], [19.5, 1])
     h21 = signal.TransferFunction([-0.763], [31.8, 1])
     h22 = signal.TransferFunction([0.235], [1, 0])
+    #h22 = signal.TransferFunction([0.235], [1, 1])
     H1 = [[h11, h12], [h21, h22]]
     H2 = [[h11, h12, h11, h12], [h21, h22, h21, h22]]
     Ts = 1
     m = 3
     controller = IHMPCController(H1, Ts, m)
-    controller2 = IHMPCController(H2, Ts, m)
-
-    o = OPOM(H1, Ts)
-    o.X = np.array([0, 0, 0, 0, 0, 0, 0, 0])
-    o.X = np.array([0.286907, 1.1116616, 0, 0.29493999, -0.15978252, 0, 0.065493, 0.080981])
-    o.X = np.array([1.297874,  1.0319027,  0, -0.40238088,  0.17077504, 0, -0.008949, -0.011092])
-    o.X = np.array([2.292925,  0.3075793, 0, -1.39258457, 0.64501061, 0, -0.133836, -0.165534])
-    # du1 = np.array([-8.0603,7.2161,-0.1616])
-    # du2 = np.array([0.0628,10.3272,-5.5768])
-
-    du1 = np.array([-3.0557, 1.8628, 0.8482])
-    du2 = np.array([0.5296, 2.2075, -2.3925])
-
-    du1 = np.array([-0.5151, -0.1428, 1.0497])
-    du2 = np.array([0.2403, -0.1899, -0.4422])
-
-    du1 = np.array([0.0795, -0.3145, 0.8923])
-    du2 = np.array([0.4348, -1.0189, -0.0731])
-
-    du1 = np.array([-0.7687, 0.6665, 0.6310])
-    du2 = np.array([0.7352, -0.5667, -0.6973])
-
-    X, Y = o.output(du1, du2, 3)
-
-    print('X=\n', X)
-    print('Y=\n', Y)
 
     A = controller.opom.A
     B = controller.opom.B
@@ -382,7 +385,45 @@ if __name__ == '__main__':
     Wn = controller.Wn
     Aeq = controller.Aeq
 
-    sim = Simulation(controller)
 
-    H, cf, beq = sim.run()
-    # print(H, '\n\n', cf)
+
+    sim = Simulation(controller)
+    
+    #X0 = np.array([0, 0, 0, 0, 0, 0, 0, 0])
+    #du1 = np.array([-3.0557, 1.8628, 0.8482])
+    #du2 = np.array([0.5296, 2.2075, -2.3925])
+    
+    #X0 = np.array([0.286907, 1.1116616, 0, 0.29493999, -0.15978252, 0, 0.065493, 0.080981])
+    #du1 = np.array([-0.5151, -0.1428, 1.0497])
+    #du2 = np.array([0.2403, -0.1899, -0.4422])
+    
+    #X0 = np.array([1.297874,  1.0319027,  0, -0.40238088,  0.17077504, 0, -0.008949, -0.011092])
+    #du1 = np.array([0.0795, -0.3145, 0.8923])
+    #du2 = np.array([0.4348, -1.0189, -0.0731])
+    
+    #X0 = np.array([2.292925,  0.3075793, 0, -1.39258457, 0.64501061, 0, -0.133836, -0.165534])
+    #du1 = np.array([-0.7687, 0.6665, 0.6310])
+    #du2 = np.array([0.7352, -0.5667, -0.6973])
+    
+    
+    #X0 = np.array([ 2.855376  , -0.5043956 ,  0, -2.11802094,  0.99731609, 0, -0.234308  , -0.289802  ])
+    #du1 = np.array([-1.2669, 2.5329, -1.2013])
+    #du2 = np.array([-0.2017, 1.2350, -1.0980])
+    
+    #X0 = np.array([ 2.25032   , -1.2429462 ,  0 , -1.98844326,  0.95449213, 0, -0.246601  , -0.3050065 ])
+    #du1 = np.array([-3.2146, 4.0681, -1.1988])
+    #du2 = np.array([-0.2100, 3.1155, -2.5602])
+    
+    X0 = np.array([0, 0, 0, 0, 0, 0, 0.4, -0.4])
+    #du1 = np.array([])
+    #du2 = np.array([])
+    
+    du = np.vstack((du1, du2)).T
+    
+    
+    X, Y, H, cf, Aeq, beq = sim.run(X0, du)
+    
+    print('X=\n', X)
+    print('Y=\n', Y)
+    
+    savemat('paper-1.mat', {'X': X, 'Y': Y, 'H':H, 'cf':cf, 'Aeq': Aeq, 'beq': beq})
