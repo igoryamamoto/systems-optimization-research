@@ -1,4 +1,4 @@
-osqp
+osqp==0.2.1
 cvxopt==1.1.9
 cycler==0.10.0
 matplotlib==2.0.2
