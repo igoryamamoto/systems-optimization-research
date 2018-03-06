@@ -6,9 +6,11 @@ Created on Wed Apr 26 12:07:03 2017
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from cvxopt import matrix, solvers
+# from cvxopt import matrix, solvers
 from scipy import signal
 from scipy.linalg import block_diag
+import scipy.sparse as sparse
+import osqp
 
 
 class OPOM(object):
@@ -313,6 +315,10 @@ class IHMPCController(object):
         # du = list(sol['x'])
         # s = sol['status']
         # j = sol['primal objective']
+        solver = osqp.OSQP()
+        solver.setup(P=sparse.csc_matrix(H), q=cf, A=sparse.csc_matrix(self.Aeq), u=beq, verbose=False)
+        results = solver.solve()
+        print(results.x)
         return H, cf, beq
 
 
@@ -321,9 +327,12 @@ class Simulation(object):
         self.controller = controller
 
     def run(self):
-        e_s = np.array([1 - 2.292925, 1 - 0.3075793])
-        x_d = np.array([0, -1.39258457, 0.64501061, 0])
-        x_i = np.array([-0.133836, -0.165534])
+        #e_s = np.array([1 - 2.292925, 1 - 0.3075793])
+        #x_d = np.array([0, -1.39258457, 0.64501061, 0])
+        #x_i = np.array([-0.133836, -0.165534])
+        e_s = np.array([1 - 1, 1 - 1])
+        x_d = np.array([0, 0, 0, 0])
+        x_i = np.array([0, 0])
         return self.controller.calculate_control(e_s, x_d, x_i)
 
 
