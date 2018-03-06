@@ -138,18 +138,22 @@ class OPOM(object):
 
         return A, B, C, D
 
-    def output(self, du1, du2, samples):
-        U = np.vstack((du1, du2)).T
+    def output(self, dU, samples=1):
+        try:
+            shape = dU.shape[1]
+            print(shape)
+        except IndexError:
+            dU = np.reshape(dU,(1,self.nu))
         X = np.zeros((samples+1, self.nx))
         X[0] = self.X
         Y = np.zeros((samples+1, self.ny))
         Y[0] = self.C(0).dot(X[0])
         for k in range(samples):
-            X[k+1] = self.A.dot(X[k]) + self.B.dot(U[k])
+            X[k+1] = self.A.dot(X[k]) + self.B.dot(dU[k])
             Y[k+1] = self.C(0).dot(X[k+1])
 
         self.X = X[samples]
-        return X, Y
+        return X[samples], Y[samples]
 
 
 class IHMPCController(object):
@@ -161,6 +165,7 @@ class IHMPCController(object):
         self.nu = self.opom.nu
         self.na = self.opom.na
         self.nd = self.opom.nd
+        self.nx = self.opom.nx
         self.m = m  # control horizon
         self.Q = np.eye(self.ny)
         self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._create_matrices()
@@ -231,7 +236,16 @@ class IHMPCController(object):
 
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
 
-    def calculate_control(self, e_s, x_d, x_i):
+    def calculate_control(self, ref, X=None):
+        
+        if X == None:
+            X = self.opom.X
+        x_s = X[:2]
+        x_d = X[2:6]
+        x_i = X[6:]
+        
+        e_s = ref - x_s
+        
         def G1(n):
             G = np.zeros((self.ny, self.nd))
             for i in range(self.ny):
@@ -318,23 +332,28 @@ class IHMPCController(object):
         solver = osqp.OSQP()
         solver.setup(P=sparse.csc_matrix(H), q=cf, A=sparse.csc_matrix(self.Aeq), u=beq, verbose=False)
         results = solver.solve()
-        print(results.x)
-        return H, cf, beq
+        du1 = results.x[:3]
+        du2 = results.x[3:]
+        dU = np.array([du1[0], du2[0]])
+        return dU
 
 
 class Simulation(object):
-    def __init__(self, controller):
+    def __init__(self, controller, tsim):
         self.controller = controller
+        self.tsim = tsim
+        self.X = np.zeros((tsim + 1, self.controller.nx))
+        self.Y = np.zeros((tsim + 1, self.controller.ny))
+        self.dU = np.zeros((tsim, self.controller.nu))
+
 
     def run(self):
-        #e_s = np.array([1 - 2.292925, 1 - 0.3075793])
-        #x_d = np.array([0, -1.39258457, 0.64501061, 0])
-        #x_i = np.array([-0.133836, -0.165534])
-        e_s = np.array([1 - 1, 1 - 1])
-        x_d = np.array([0, 0, 0, 0])
-        x_i = np.array([0, 0])
-        return self.controller.calculate_control(e_s, x_d, x_i)
-
+        ref = np.array([1, 1])
+        for k in range(self.tsim):
+            self.dU[k] = self.controller.calculate_control(ref)
+            self.X[k+1], self.Y[k+1] = controller.opom.output(self.dU[k])
+        plt.plot(self.Y)
+        
 
 if __name__ == '__main__':
     h11 = signal.TransferFunction([-0.19], [1, 0])
@@ -342,56 +361,27 @@ if __name__ == '__main__':
     h21 = signal.TransferFunction([-0.763], [31.8, 1])
     h22 = signal.TransferFunction([0.235], [1, 0])
     H1 = [[h11, h12], [h21, h22]]
-    H2 = [[h11, h12, h11, h12], [h21, h22, h21, h22]]
     Ts = 1
     m = 3
     controller = IHMPCController(H1, Ts, m)
-    controller2 = IHMPCController(H2, Ts, m)
-
-    o = OPOM(H1, Ts)
-    o.X = np.array([0, 0, 0, 0, 0, 0, 0, 0])
-    o.X = np.array([0.286907, 1.1116616, 0, 0.29493999, -0.15978252, 0, 0.065493, 0.080981])
-    o.X = np.array([1.297874,  1.0319027,  0, -0.40238088,  0.17077504, 0, -0.008949, -0.011092])
-    o.X = np.array([2.292925,  0.3075793, 0, -1.39258457, 0.64501061, 0, -0.133836, -0.165534])
-    # du1 = np.array([-8.0603,7.2161,-0.1616])
-    # du2 = np.array([0.0628,10.3272,-5.5768])
-
-    du1 = np.array([-3.0557, 1.8628, 0.8482])
-    du2 = np.array([0.5296, 2.2075, -2.3925])
-
-    du1 = np.array([-0.5151, -0.1428, 1.0497])
-    du2 = np.array([0.2403, -0.1899, -0.4422])
-
-    du1 = np.array([0.0795, -0.3145, 0.8923])
-    du2 = np.array([0.4348, -1.0189, -0.0731])
-
-    du1 = np.array([-0.7687, 0.6665, 0.6310])
-    du2 = np.array([0.7352, -0.5667, -0.6973])
-
-    X, Y = o.output(du1, du2, 3)
-
-    print('X=\n', X)
-    print('Y=\n', Y)
-
-    A = controller.opom.A
-    B = controller.opom.B
-    C = controller.opom.C
-    D = controller.opom.D
-    D0 = controller.opom.D0
-    Dd = controller.opom.Dd
-    Di = controller.opom.Di
-    N = controller.opom.N
-    F = controller.opom.F
-    Z = controller.Z
-    R = controller.opom.R
-    D0_n = controller.D0_n
-    Di_1n = controller.Di_1n
-    Di_2n = controller.Di_2n
-    Psi = controller.opom.Psi
-    Wn = controller.Wn
-    Aeq = controller.Aeq
-
-    sim = Simulation(controller)
-
-    H, cf, beq = sim.run()
-    # print(H, '\n\n', cf)
+    tsim = 50
+    sim = Simulation(controller, tsim)
+    sim.run()
+    
+#    A = controller.opom.A
+#    B = controller.opom.B
+#    C = controller.opom.C
+#    D = controller.opom.D
+#    D0 = controller.opom.D0
+#    Dd = controller.opom.Dd
+#    Di = controller.opom.Di
+#    N = controller.opom.N
+#    F = controller.opom.F
+#    Z = controller.Z
+#    R = controller.opom.R
+#    D0_n = controller.D0_n
+#    Di_1n = controller.Di_1n
+#    Di_2n = controller.Di_2n
+#    Psi = controller.opom.Psi
+#    Wn = controller.Wn
+#    Aeq = controller.Aeq
