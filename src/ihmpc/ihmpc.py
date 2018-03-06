@@ -352,7 +352,6 @@ class Simulation(object):
         for k in range(self.tsim):
             self.dU[k] = self.controller.calculate_control(ref)
             self.X[k+1], self.Y[k+1] = controller.opom.output(self.dU[k])
-        plt.plot(self.Y)
         
 
 if __name__ == '__main__':
@@ -364,9 +363,22 @@ if __name__ == '__main__':
     Ts = 1
     m = 3
     controller = IHMPCController(H1, Ts, m)
-    tsim = 50
+    tsim = 100
     sim = Simulation(controller, tsim)
     sim.run()
+    dU = sim.dU
+    Y = sim.Y
+    plt.plot(Y[:, 0], label='y1')
+    plt.plot(Y[:, 1], label='y2')
+    plt.legend(loc=0, fontsize='large')
+    plt.xlabel('sample time (k)')    
+    plt.show()
+    
+    plt.figure()
+    plt.plot(dU[:, 0], label='du1')
+    plt.plot(dU[:, 1], label='du2')
+    plt.legend(loc=0, fontsize='large')
+    plt.xlabel('sample time (k)')
     
 #    A = controller.opom.A
 #    B = controller.opom.B
