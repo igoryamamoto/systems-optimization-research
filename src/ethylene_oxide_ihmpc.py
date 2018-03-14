@@ -33,6 +33,7 @@ if __name__ == '__main__':
     plt.plot(dU[:, 1], label='du2')
     plt.legend(loc=0, fontsize='large')
     plt.xlabel('sample time (k)')
+    plt.show()
     
 #    A = controller.opom.A
 #    B = controller.opom.B
