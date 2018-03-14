@@ -19,3 +19,8 @@ Repositório com os códigos dos algoritmos de controle preditivo (GPC, IHMPC), 
 - `cd src`
 - `python3 ethylene_oxide_gpc.py`
 - `python3 ethylene_oxide_ihmpc.py`
+
+### Pré-requisitos de instalação:
+Para a execução do algoritmo IHMPC, o solver [OSQP](http://osqp.readthedocs.io/en/latest/installation/python.html) é utilizado. As seguintes dependências devem ser instaladas na máquina:
+- [GCC](https://gcc.gnu.org/)
+- [CMake](https://cmake.org/)
