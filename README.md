@@ -3,18 +3,19 @@ Repositório com os códigos dos algoritmos de controle preditivo (GPC, IHMPC), 
 
 ## Estrutura do repositório:
 - ./requirements.txt : arquivo com as bibliotecas do python necessárias para executar os arquivos
-- ./doc/ : diretório com documentos (relatório de estágio, artigos-base)
-- ./img/ : diretório contendo imagens de experimentos
-- ./src/ : diretório contendo o código-fonte em python dos algoritmos
-  - /aux/ : arquivos auxiliares temporários
-  - /debutanizadora/ : arquivos do caso de estuda da torre debutanizadora
-  - /gpc/ : arquivos com a implementação do algoritmo GPC
-  - /ihmpc/ : arquivo com a implementação do algoritmo IHMPC
-
-## Instruções para execução dos arquivos
+- ./doc : diretório com documentos (relatório de estágio, artigos-base)
+- ./img : diretório contendo imagens de experimentos
+- ./src : diretório contendo o código-fonte em python dos algoritmos
+  - /gpc : arquivos com a implementação do algoritmo GPC
+  - /ihmpc : arquivo com a implementação do algoritmo IHMPC
+  - /ethylene_oxide_gpc.py : script com experimento de controle da planta de óxido de etileno com GPC
+  - /ethylene_oxide_ihmpc.py : script com experimento de controle da planta de óxido de etileno com IHMPC
+  
+## Instruções para execução dos experimentos:
 - Utilizar Python 3
 - `git clone git@github.com:igoryamamoto/internship-code.git`
 - `cd internship-code`
-- `pip install -r requirements.txt`
-- `cd src/gpc`
-- `python gpc.py`
+- `pip3 install -r requirements.txt`
+- `cd src`
+- `python3 ethylene_oxide_gpc.py`
+- `python3 ethylene_oxide_ihmpc.py`
