@@ -190,7 +190,8 @@ class IHMPCController(object):
         solver = osqp.OSQP()
         solver.setup(P=sparse.csc_matrix(H), q=cf, A=sparse.csc_matrix(self.Aeq), u=beq, verbose=False)
         results = solver.solve()
-        du1 = results.x[:3]
-        du2 = results.x[3:]
-        dU = np.array([du1[0], du2[0]])
+        #print(results.x)
+        du1 = results.x[0]
+        du2 = results.x[1]
+        dU = np.array([du1, du2])
         return dU
