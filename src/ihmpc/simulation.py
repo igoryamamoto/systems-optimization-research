@@ -16,8 +16,7 @@ class Simulation(object):
         self.Y = np.zeros((tsim + 1, self.controller.ny))
         self.dU = np.zeros((tsim, self.controller.nu))
 
-    def run(self):
-        ref = np.array([0.01, 0.01])
+    def run(self, ref):
         for k in range(self.tsim):
             self.dU[k] = self.controller.calculate_control(ref)
             self.X[k+1], self.Y[k+1] = self.controller.opom.output(self.dU[k])
