@@ -16,6 +16,7 @@ Repositório com os códigos dos algoritmos de controle preditivo (GPC, IHMPC), 
 - `git clone git@github.com:igoryamamoto/internship-code.git`
 - `cd internship-code`
 - `pip3 install -r requirements.txt`
+- `pip3 install osqp`
 - `cd src`
 - `python3 ethylene_oxide_gpc.py`
 - `python3 ethylene_oxide_ihmpc.py`
