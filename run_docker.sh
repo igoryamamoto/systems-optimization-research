@@ -1,5 +1,5 @@
 docker run --rm -it \
-   --user=$(id -u) \
+   --user=1000 \
    --env="DISPLAY" \
    --volume="${PWD}/:/app" \
    --volume="/etc/group:/etc/group:ro" \
