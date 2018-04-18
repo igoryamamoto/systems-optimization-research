@@ -3,6 +3,8 @@
 Created on Wed Apr 26 12:07:03 2017
 
 @author: Igor Yamamoto
+
+Alterado em 07/04/2018 - MLima
 """
 import numpy as np
 from scipy import signal
@@ -11,20 +13,24 @@ from scipy import signal
 class OPOM(object):
     def __init__(self, H, Ts):
         self.H = np.array(H)
-        self.ny = self.H.shape[0]
-        self.nu = self.H.shape[1]
+        if self.H.size == 1:
+            self.ny = 1
+            self.nu = 1
+        else:
+            self.ny = self.H.shape[0]
+            self.nu = self.H.shape[1]
         self.Ts = Ts
         self.na = self._max_order()  # max order of Gij
         self.nd = self.ny*self.nu*self.na
         self.nx = 2*self.ny+self.nd
         self.X = np.zeros(self.nx)
-        self.R, self.D0, self.Di, self.Dd, self.F, self.N = self._create_matrices()
+        self.R, self.D0, self.Di, self.Dd, self.F, self.N, self.Istar = self._create_matrices()
         self.A, self.B, self.C, self.D = self._create_state_space()
 
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(),
                                                          self.B.__repr__(),
-                                                         self.C.__repr__(),
+                                                         self.C(0).__repr__(),
                                                          self.D.__repr__())
 
     def _max_order(self):
@@ -69,12 +75,17 @@ class OPOM(object):
         Dd = np.array([])
         Di = np.zeros((self.nu))
         R = np.array([])
+        Istar = np.array([])
         for i in range(self.ny):
             d0_x = np.array([])
             di_x = np.array([])
             for j in range(self.nu):
-                b = self.H[i][j].num
-                a = self.H[i][j].den
+                if self.H.size > 1:
+                    b = self.H[i][j].num
+                    a = self.H[i][j].den
+                else:
+                    b = self.H[i].num
+                    a = self.H[i].den
                 d0, dd, di, r = self._get_coeff(b, a)
                 d0_x = np.hstack((d0_x, d0))
                 Dd = np.append(Dd, dd)
@@ -82,12 +93,15 @@ class OPOM(object):
                 R = np.append(R, r)
             D0 = np.vstack((D0, d0_x))
             Di = np.vstack((Di, di_x))
+            tem_i = int(not all(R))
+            Istar = np.append(Istar,tem_i)
         Dd = np.diag(Dd)
         D0 = D0[1:]
         Di = Di[1:]
+        Istar = np.diag(Istar)
 
         # Define matrices F[ndxnd], J[nu.naxnu], N[ndxnu]
-        F = np.diag(np.exp(R))
+        F = np.diag(np.exp(self.Ts*R))
 
         J = np.zeros((self.nu*self.na, self.nu))
         for col in range(self.nu):
@@ -97,7 +111,7 @@ class OPOM(object):
         for _ in range(self.ny-1):
             N = np.vstack((N, J))
 
-        return R, D0, Di, Dd, F, N
+        return R, D0, Di, Dd, F, N, Istar
 
     def Psi(self, t):
         R2 = np.array(list(map(lambda x: np.exp(x*t), self.R)))
@@ -113,19 +127,19 @@ class OPOM(object):
     def _create_state_space(self):
         a1 = np.hstack((np.eye(self.ny),
                         np.zeros((self.ny, self.nd)),
-                        self.Ts*np.eye(self.ny)))
+                        self.Ts*self.Istar))
         a2 = np.hstack((np.zeros((self.nd, self.ny)),
                         self.F,
                         np.zeros((self.nd, self.ny))))
         a3 = np.hstack((np.zeros((self.ny, self.ny)),
                         np.zeros((self.ny, self.nd)),
-                        np.eye(self.ny)))
+                        self.Istar))
         A = np.vstack((a1, a2, a3))
 
         B = np.vstack((self.D0+self.Ts*self.Di,
                        self.Dd.dot(self.F).dot(self.N),
                        self.Di))
-
+        
         def C(t):
             return np.hstack((np.eye(self.ny), self.Psi(t), np.eye(self.ny)*t))
 

@@ -16,11 +16,11 @@ if __name__ == '__main__':
     Ts = 1
     m = 3
     controller = IHMPCController(H1, Ts, m)
-    tsim = 100
+    tsim = 500
     # estado inicial X0
     controller.opom.X = np.array([0,0, 0, 0, 0, 0, 0, 0])
     sim = Simulation(controller, tsim)
-    ref = np.array([0.01, 0.0])
+    ref = np.array([1, 1])
     sim.run(ref)
     dU = sim.dU
     Y = sim.Y

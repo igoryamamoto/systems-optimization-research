@@ -111,7 +111,8 @@ class IHMPCController(object):
                     if r == 0:
                         g = n
                     else:
-                        g = 1/r*(np.exp(r*n)-1)
+                        g = 1/r*(1-np.exp(r*n*self.Ts))
+                        # g = 1/r*(np.exp(r*n)-1)
                     phi = np.append(phi, g)
                 G[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi
             return G
