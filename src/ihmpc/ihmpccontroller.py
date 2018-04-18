@@ -144,7 +144,8 @@ class IHMPCController(object):
                         if x == 0:
                             return n
                         else:
-                            return (1/x**2)*np.exp(x*n)*(x*n-1)
+                            return (1/x**2)*(np.exp(x*n*self.Ts)*(x*n*self.Ts-1))
+                            # return (1/x**2)*np.exp(x*n)*(x*n-1)
                     phi = np.array(list(map(aux, phi)))
                 else:
                     phi = np.zeros(self.nu)
