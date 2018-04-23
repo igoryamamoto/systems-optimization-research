@@ -163,12 +163,3 @@ class OPOM(object):
 
         self.X = X[samples]
         return X[samples], Y[samples]
-
-if __name__ == '__main__':
-    h11 = signal.TransferFunction([-0.19], [1, 0])
-    h12 = signal.TransferFunction([-1.7], [19.5, 1])
-    h21 = signal.TransferFunction([-0.763], [31.8, 1])
-    h22 = signal.TransferFunction([0.235], [1, 0])
-    H1 = [[h11, h12], [h21, h22]]
-    Ts = 1
-    o = OPOM([[h11]], Ts)

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import matplotlib.pyplot as plt
 from scipy import signal
 import numpy as np
 
-from ihmpc import OPOM, IHMPCController, Simulation
+from ihmpc import IHMPCController, Simulation
 
 
 if __name__ == '__main__':
@@ -25,7 +24,7 @@ if __name__ == '__main__':
     controller.opom.X = np.array([0,0, 0, 0, 0, 0, 0.4, -0.4])
     
     
-    tsim = 500
+    tsim = 200
     step_time = int(tsim/2)
     set_points = np.array([[0, 0]]*step_time + [[2, 2]]*(tsim - step_time))
     
