@@ -16,44 +16,19 @@ if __name__ == '__main__':
     Ts = 1
     m = 3
     du_max = 0.7
-    controller = IHMPCController(H1, Ts, m, du_max)
-    R = controller.opom.R
-    # estado inicial X0
+    Q = np.array([[1, 0],
+                  [0, 1]])
+    R = np.array([[1e-2, 0],
+                  [0, 1e-2]])
+    
+    controller = IHMPCController(H1, Ts, m, du_max, Q, R)
     controller.opom.X = np.array([0,0, 0, 0, 0, 0, 0.4, -0.4])
+    
+    
     tsim = 500
     step_time = int(tsim/2)
-    ref = np.array([[0, 0]]*step_time + [[2, 2]]*(tsim - step_time))
+    set_points = np.array([[0, 0]]*step_time + [[2, 2]]*(tsim - step_time))
+    
     sim = Simulation(controller, tsim)
-    sim.run(ref)
-    dU = sim.dU
-    Y = sim.Y
-    plt.plot(Y[:, 0], label='y1')
-    plt.plot(Y[:, 1], label='y2')
-    plt.legend(loc=0, fontsize='large')
-    plt.xlabel('sample time (k)')    
-    plt.show()
-    
-    plt.figure()
-    plt.plot(dU[:, 0], label='du1')
-    plt.plot(dU[:, 1], label='du2')
-    plt.legend(loc=0, fontsize='large')
-    plt.xlabel('sample time (k)')
-    plt.show()
-    
-#    A = controller.opom.A
-#    B = controller.opom.B
-#    C = controller.opom.C
-#    D = controller.opom.D
-#    D0 = controller.opom.D0
-#    Dd = controller.opom.Dd
-#    Di = controller.opom.Di
-#    N = controller.opom.N
-#    F = controller.opom.F
-#    Z = controller.Z
-#    R = controller.opom.R
-#    D0_n = controller.D0_n
-#    Di_1n = controller.Di_1n
-#    Di_2n = controller.Di_2n
-#    Psi = controller.opom.Psi
-#    Wn = controller.Wn
-#    Aeq = controller.Aeq
+    sim.run(set_points)
+    sim.show_results()

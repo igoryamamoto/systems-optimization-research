@@ -13,7 +13,7 @@ from ihmpc.opom import OPOM
 
 
 class IHMPCController(object):
-    def __init__(self, H, Ts, m, du_max):
+    def __init__(self, H, Ts, m, du_max, Q, R):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
         self.Ts = Ts
         self.opom = OPOM(H, Ts)
@@ -24,8 +24,9 @@ class IHMPCController(object):
         self.nx = self.opom.nx
         self.m = m  # control horizon
         self.du_max = du_max # max control increment
-        self.Q = np.eye(self.ny)
-        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._create_matrices()
+        self.Q = Q
+        self.R = R
+        self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq, self.R1 = self._create_matrices()
 
     def _create_matrices(self):
         def faz_D0n_ou_Di1n(D, n, m):
@@ -90,8 +91,12 @@ class IHMPCController(object):
         Di_1m = Di_1n[self.m-1]
 
         Aeq = np.vstack((D0_m+Di_3m, Di_1m))
+        
+        R1 = self.R
+        for _ in range(self.m-1):
+            R1 = block_diag(R1, self.R)
 
-        return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
+        return Z, D0_n, Di_1n, Di_2n, Wn, Aeq, R1
 
     def calculate_control(self, set_point, X=None):
         
@@ -167,8 +172,8 @@ class IHMPCController(object):
             H_m += a + b + c
 
         H_inf = self.Z.T.dot(self.Wn[self.m-1].T).dot(G2(float('inf'))-G2(self.m)).dot(self.Wn[self.m-1]).dot(self.Z)
-
-        H = H_m + H_inf
+        
+        H = H_m + H_inf + self.R1
 
         cf_m = 0
         for n in range(self.m):
