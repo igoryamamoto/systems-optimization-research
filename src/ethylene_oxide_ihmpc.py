@@ -15,12 +15,15 @@ if __name__ == '__main__':
     H1 = [[h11, h12], [h21, h22]]
     Ts = 1
     m = 3
-    controller = IHMPCController(H1, Ts, m)
-    tsim = 500
+    du_max = 0.7
+    controller = IHMPCController(H1, Ts, m, du_max)
+    R = controller.opom.R
     # estado inicial X0
-    controller.opom.X = np.array([0,0, 0, 0, 0, 0, 0, 0])
+    controller.opom.X = np.array([0,0, 0, 0, 0, 0, 0.4, -0.4])
+    tsim = 500
+    step_time = int(tsim/2)
+    ref = np.array([[0, 0]]*step_time + [[2, 2]]*(tsim - step_time))
     sim = Simulation(controller, tsim)
-    ref = np.array([1, 1])
     sim.run(ref)
     dU = sim.dU
     Y = sim.Y

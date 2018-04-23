@@ -13,7 +13,7 @@ from ihmpc.opom import OPOM
 
 
 class IHMPCController(object):
-    def __init__(self, H, Ts, m):
+    def __init__(self, H, Ts, m, du_max):
         # dt, m, ny, nu, na, D0, Dd, Di, F, N, Z, W, Q, R, r, G1, G2, G3
         self.Ts = Ts
         self.opom = OPOM(H, Ts)
@@ -23,6 +23,7 @@ class IHMPCController(object):
         self.nd = self.opom.nd
         self.nx = self.opom.nx
         self.m = m  # control horizon
+        self.du_max = du_max # max control increment
         self.Q = np.eye(self.ny)
         self.Z, self.D0_n, self.Di_1n, self.Di_2n, self.Wn, self.Aeq = self._create_matrices()
 
@@ -92,7 +93,7 @@ class IHMPCController(object):
 
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq
 
-    def calculate_control(self, ref, X=None):
+    def calculate_control(self, set_point, X=None):
         
         if X == None:
             X = self.opom.X
@@ -100,7 +101,7 @@ class IHMPCController(object):
         x_d = X[2:6]
         x_i = X[6:]
         
-        e_s = ref - x_s
+        e_s = set_point - x_s
         
         def G1(n):
             G = np.zeros((self.ny, self.nd))
@@ -166,10 +167,9 @@ class IHMPCController(object):
             H_m += a + b + c
 
         H_inf = self.Z.T.dot(self.Wn[self.m-1].T).dot(G2(float('inf'))-G2(self.m)).dot(self.Wn[self.m-1]).dot(self.Z)
-        
+
         H = H_m + H_inf
-        #H = H_m
-        
+
         cf_m = 0
         for n in range(self.m):
             a = (-e_s.T.dot(self.Q).dot(G1(n)-G1(n-1)) + x_d.T.dot(G2(n)-G2(n-1)) + x_i.T.dot(self.Q).dot(G3(n)-G3(n-1))).dot(self.Wn[n]).dot(self.Z)
@@ -180,19 +180,19 @@ class IHMPCController(object):
         cf_inf = x_d.T.dot(G2(float('inf'))-G2(self.m)).dot(self.Wn[self.m-1]).dot(self.Z)
 
         cf = cf_m + cf_inf
-        #cf = cf_m
+
         beq = np.hstack((e_s - self.m*self.Ts*x_i, -x_i)).T
-        # sol = solvers.qp(P=matrix(H), q=matrix(cf), A=matrix(self.Aeq), b=matrix(beq))
-        # minimize    (1/2)*x'*P*x + q'*x
-        # subject to  G*x <= h
-        #             A*x = b.
-        # du = list(sol['x'])
-        # s = sol['status']
-        # j = sol['primal objective']
+        
+        # control increment constraints
+        A_du_max = np.vstack((np.eye(self.nu*self.m),-1*np.eye(self.nu*self.m)))
+        b_du_max = np.array([self.du_max]*self.nu*self.m+[self.du_max]*self.nu*self.m)
+        
+        Aeq = np.vstack((self.Aeq, A_du_max))
+        beq = np.hstack((beq, b_du_max))
+        
         solver = osqp.OSQP()
-        solver.setup(P=sparse.csc_matrix(H), q=cf, A=sparse.csc_matrix(self.Aeq), u=beq, verbose=False)
+        solver.setup(P=sparse.csc_matrix(H), q=cf, A=sparse.csc_matrix(Aeq), u=beq, verbose=False)
         results = solver.solve()
-        #print(results.x)
         du1 = results.x[0]
         du2 = results.x[1]
         dU = np.array([du1, du2])

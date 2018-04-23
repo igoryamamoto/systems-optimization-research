@@ -16,7 +16,10 @@ class Simulation(object):
         self.Y = np.zeros((tsim + 1, self.controller.ny))
         self.dU = np.zeros((tsim, self.controller.nu))
 
-    def run(self, ref):
+    def run(self, set_points):
+        if set_points.shape[0] != self.tsim:
+            raise ValueError("size of set_points doesn't match tsim.")
+            
         for k in range(self.tsim):
-            self.dU[k] = self.controller.calculate_control(ref)
+            self.dU[k] = self.controller.calculate_control(set_points[k])
             self.X[k+1], self.Y[k+1] = self.controller.opom.output(self.dU[k])

@@ -9,7 +9,7 @@ from ihmpc import OPOM, IHMPCController, Simulation
 
 if __name__ == '__main__':
     # funcao de transferencia 1/(s+1)
-    h = signal.TransferFunction([1], [1, 1])
+    h = signal.TransferFunction([1], [1, 2])
     # funcao de transferencia nula
     h0 = signal.TransferFunction([0], [1])
     # tempo de amostragem
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # construcao objeto de simulacao
     sim = Simulation(controller, tsim)
     # referencia
-    ref = np.array([2, 0])
+    ref = np.array([1, 0])
     # chamada da simulacao
     sim.run(ref)
     
