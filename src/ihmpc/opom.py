@@ -30,9 +30,9 @@ class OPOM(object):
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(),
                                                          self.B.__repr__(),
-                                                         self.C(0).__repr__(),
+                                                         self.C.__repr__(),
                                                          self.D.__repr__())
-
+        
     def _max_order(self):
         na = 0
         for h in self.H.flatten():
