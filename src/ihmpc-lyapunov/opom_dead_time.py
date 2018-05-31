@@ -8,6 +8,7 @@ Alterado em 07/04/2018 - MLima
 """
 import numpy as np
 from scipy import signal
+from scipy.linalg import block_diag
 
 class TransferFunctionDelay(signal.TransferFunction):
     def __init__(self, num, den, delay=0):
@@ -29,7 +30,9 @@ class OPOM(object):
         self.Ts = Ts
         self.na = self._max_order()  # max order of Gij
         self.nd = self.ny*self.nu*self.na
-        self.nx = 2*self.ny+self.nd
+        self.delay_matrix = self._delay_matrix()
+        self.theta_max = self.delay_matrix.max()
+        self.nx = 2*self.ny+self.nd+self.theta_max*self.nu
         self.X = np.zeros(self.nx)
         self.R, self.D0, self.Di, self.Dd, self.F, self.N, self.Istar = self._create_matrices()
         self.A, self.B, self.C, self.D = self._create_state_space()
@@ -40,7 +43,13 @@ class OPOM(object):
                                                          self.B.__repr__(),
                                                          self.C.__repr__(),
                                                          self.D.__repr__())
-
+        
+    def _delay_matrix(self):
+        return np.apply_along_axis(
+                lambda row: list(map(lambda tf: tf.delay, row)),
+                0,
+                self.H)
+        
     def _max_order(self):
         na = 0
         for h in self.H.flatten():
@@ -132,6 +141,41 @@ class OPOM(object):
             psi[i, i*self.nu*self.na:(i+1)*self.nu*self.na] = phi
         return psi
 
+    def Bs(self, l):
+        return np.where(self.delay_matrix==l,                    
+                        self.D0 + self.Ts*self.Di,
+                        0)
+
+    def Bi(self, l):
+        return np.where(self.delay_matrix==l,                    
+                        self.Di,
+                        0)
+
+    def Bd(self, l):
+        Bd = self.Dd.dot(self.F).dot(self.N)
+        flat_delay_matrix = self.delay_matrix.flatten().tolist()
+        delay_matrix_nd = list(map(lambda x: [x]*self.na,
+                                   flat_delay_matrix))
+        delay_matrix_nd_nu = np.diag(
+                                np.array(delay_matrix_nd).flatten()
+                             ).dot(self.N)
+        return np.where(delay_matrix_nd_nu==l,                    
+                        Bd,
+                        0)
+        
+    def _create_Az(self):
+        z1_row = np.zeros((self.nu, self.nx))
+        
+        if self.theta_max == 1:
+            return z1_row
+        else:
+            zero_block = np.zeros(((self.theta_max-1)*self.nu, self.nx-self.theta_max*self.nu))
+            eye_diag = block_diag(*([np.eye(self.nu).tolist()]*(self.theta_max-1)))
+            zero_column = np.zeros(((self.theta_max-1)*self.nu, self.nu))
+            z2_to_ztheta_max_row = np.hstack((zero_block, eye_diag, zero_column))
+            
+            return np.vstack((z1_row, z2_to_ztheta_max_row))
+    
     def _create_state_space(self):
         a1 = np.hstack((np.eye(self.ny),
                         np.zeros((self.ny, self.nd)),
@@ -142,11 +186,32 @@ class OPOM(object):
         a3 = np.hstack((np.zeros((self.ny, self.ny)),
                         np.zeros((self.ny, self.nd)),
                         self.Istar))
-        A = np.vstack((a1, a2, a3))
-
-        B = np.vstack((self.D0+self.Ts*self.Di,
-                       self.Dd.dot(self.F).dot(self.N),
-                       self.Di))
+        for i in range(self.theta_max):
+            a1 = np.hstack((a1, self.Bs(i+1)))
+            a2 = np.hstack((a2, self.Bd(i+1)))
+            a3 = np.hstack((a3, self.Bi(i+1)))
+        Ax = np.vstack((a1, a2, a3))
+        if self.theta_max == 0:
+            A = Ax
+            B = np.vstack((self.Bs(0),
+                       self.Bd(0),
+                       self.Bi(0),
+                       np.eye(self.nu)))
+        elif self.theta_max == 1:
+            Az = self._create_Az()
+            A = np.vstack((Ax, Az))
+            B = np.vstack((self.Bs(0),
+                           self.Bd(0),
+                           self.Bi(0),
+                           np.eye(self.nu)))
+        else:
+            Az = self._create_Az()
+            A = np.vstack((Ax, Az))
+            B = np.vstack((self.Bs(0),
+                           self.Bd(0),
+                           self.Bi(0),
+                           np.eye(self.nu),
+                           np.zeros(((self.theta_max-1)*self.nu, self.nu))))
         
         def C(t):
             return np.hstack((np.eye(self.ny), self.Psi(t), np.eye(self.ny)*t))
@@ -164,19 +229,26 @@ class OPOM(object):
         X = np.zeros((samples+1, self.nx))
         X[0] = self.X
         Y = np.zeros((samples+1, self.ny))
-        Y[0] = self.C(0).dot(X[0])
+        Y[0] = self.C.dot(X[0])
         for k in range(samples):
             X[k+1] = self.A.dot(X[k]) + self.B.dot(dU[k])
-            Y[k+1] = self.C(0).dot(X[k+1])
+            Y[k+1] = self.C.dot(X[k+1])
 
         self.X = X[samples]
         return X[samples], Y[samples]
 
 if __name__ == '__main__':
-    h11 = TransferFunctionDelay([-0.19], [1, 0], delay=0.1)
+    h11 = TransferFunctionDelay([-0.19], [1, 0], delay=2)
     h12 = TransferFunctionDelay([-1.7], [19.5, 1])
     h21 = TransferFunctionDelay([-0.763], [31.8, 1])
     h22 = TransferFunctionDelay([0.235], [1, 0])
     H = [[h11, h12], [h21, h22]]
     Ts = 1
     model = OPOM(H, Ts)
+    
+    g11 = TransferFunctionDelay([2.6], [62, 1], delay=1)
+    g12 = TransferFunctionDelay([1.5], [1426, 85, 1], delay=2) # g12 = 1.5/(1+23s)(1+62s)
+    g21 = TransferFunctionDelay([1.4], [2700, 120, 1], delay=3) # g21 = 1.4/(1+30s)(1+90s)
+    g22 = TransferFunctionDelay([2.8], [90, 1], delay=4)
+    G = [[g11, g12], [g21, g22]]
+    sys = OPOM(G, Ts)
