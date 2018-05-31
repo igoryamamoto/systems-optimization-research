@@ -9,6 +9,13 @@ Alterado em 07/04/2018 - MLima
 import numpy as np
 from scipy import signal
 
+class TransferFunctionDelay(signal.TransferFunction):
+    def __init__(self, num, den, delay=0):
+        super().__init__(num, den)
+        self.delay = delay
+        
+    def __repr__(self):
+        return "num={}\nden={}\ndt={}\ndelay={}".format(self.num, self.den, self.dt, self.delay)
 
 class OPOM(object):
     def __init__(self, H, Ts):
@@ -26,11 +33,12 @@ class OPOM(object):
         self.X = np.zeros(self.nx)
         self.R, self.D0, self.Di, self.Dd, self.F, self.N, self.Istar = self._create_matrices()
         self.A, self.B, self.C, self.D = self._create_state_space()
+        self.Psi = self.Psi(Ts)
 
     def __repr__(self):
         return "A=\n%s\n\nB=\n%s\n\nC=\n%s\n\nD=\n%s" % (self.A.__repr__(),
                                                          self.B.__repr__(),
-                                                         self.C(0).__repr__(),
+                                                         self.C.__repr__(),
                                                          self.D.__repr__())
 
     def _max_order(self):
@@ -163,3 +171,12 @@ class OPOM(object):
 
         self.X = X[samples]
         return X[samples], Y[samples]
+
+if __name__ == '__main__':
+    h11 = TransferFunctionDelay([-0.19], [1, 0], delay=0.1)
+    h12 = TransferFunctionDelay([-1.7], [19.5, 1])
+    h21 = TransferFunctionDelay([-0.763], [31.8, 1])
+    h22 = TransferFunctionDelay([0.235], [1, 0])
+    H = [[h11, h12], [h21, h22]]
+    Ts = 1
+    model = OPOM(H, Ts)
