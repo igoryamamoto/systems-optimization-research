@@ -214,7 +214,17 @@ class OPOM(object):
                            np.zeros(((self.theta_max-1)*self.nu, self.nu))))
         
         def C(t):
-            return np.hstack((np.eye(self.ny), self.Psi(t), np.eye(self.ny)*t))
+            if self.theta_max == 0:
+                return np.hstack((np.eye(self.ny), self.Psi(t), np.eye(self.ny)*t))
+            else:
+                up = np.hstack((np.eye(self.ny),
+                                self.Psi(t),
+                                np.eye(self.ny)*t,
+                                np.zeros((self.ny, self.theta_max*self.nu))))
+                eye_diag = block_diag(*([np.eye(self.nu).tolist()]*(self.theta_max)))
+                bottom = np.hstack((np.zeros((self.theta_max*self.nu, self.nx-self.theta_max*self.nu)),
+                                    eye_diag))
+                return np.vstack((up, bottom))
 
         D = np.zeros((self.ny, self.nu))
 
