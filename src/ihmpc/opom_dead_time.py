@@ -32,7 +32,8 @@ class OPOM(object):
         self.nd = self.ny*self.nu*self.na
         self.delay_matrix = self._delay_matrix()
         self.theta_max = self.delay_matrix.max()
-        self.nx = 2*self.ny+self.nd+self.theta_max*self.nu
+        self.nz = self.theta_max*self.nu
+        self.nx = 2*self.ny+self.nd+self.nz
         self.X = np.zeros(self.nx)
         self.R, self.D0, self.Di, self.Dd, self.F, self.N, self.Istar = self._create_matrices()
         self.A, self.B, self.C, self.D = self._create_state_space()
@@ -169,7 +170,7 @@ class OPOM(object):
         if self.theta_max == 1:
             return z1_row
         else:
-            zero_block = np.zeros(((self.theta_max-1)*self.nu, self.nx-self.theta_max*self.nu))
+            zero_block = np.zeros(((self.theta_max-1)*self.nu, self.nx-self.nz))
             eye_diag = block_diag(*([np.eye(self.nu).tolist()]*(self.theta_max-1)))
             zero_column = np.zeros(((self.theta_max-1)*self.nu, self.nu))
             z2_to_ztheta_max_row = np.hstack((zero_block, eye_diag, zero_column))
@@ -194,9 +195,8 @@ class OPOM(object):
         if self.theta_max == 0:
             A = Ax
             B = np.vstack((self.Bs(0),
-                       self.Bd(0),
-                       self.Bi(0),
-                       np.eye(self.nu)))
+                           self.Bd(0),
+                           self.Bi(0)))
         elif self.theta_max == 1:
             Az = self._create_Az()
             A = np.vstack((Ax, Az))
@@ -220,9 +220,9 @@ class OPOM(object):
                 up = np.hstack((np.eye(self.ny),
                                 self.Psi(t),
                                 np.eye(self.ny)*t,
-                                np.zeros((self.ny, self.theta_max*self.nu))))
+                                np.zeros((self.ny, self.nz))))
                 eye_diag = block_diag(*([np.eye(self.nu).tolist()]*(self.theta_max)))
-                bottom = np.hstack((np.zeros((self.theta_max*self.nu, self.nx-self.theta_max*self.nu)),
+                bottom = np.hstack((np.zeros((self.nz, self.nx-self.nz)),
                                     eye_diag))
                 return np.vstack((up, bottom))
 
@@ -238,7 +238,7 @@ class OPOM(object):
             dU = np.reshape(dU,(1,self.nu))
         X = np.zeros((samples+1, self.nx))
         X[0] = self.X
-        Y = np.zeros((samples+1, self.ny))
+        Y = np.zeros((samples+1, self.ny+self.nz))
         Y[0] = self.C.dot(X[0])
         for k in range(samples):
             X[k+1] = self.A.dot(X[k]) + self.B.dot(dU[k])

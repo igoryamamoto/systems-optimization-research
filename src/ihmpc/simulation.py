@@ -14,7 +14,7 @@ class Simulation(object):
         self.controller = controller
         self.tsim = tsim
         self.X = np.zeros((tsim + 1, self.controller.nx))
-        self.Y = np.zeros((tsim + 1, self.controller.ny))
+        self.Y = np.zeros((tsim + 1, self.controller.ny+self.controller.nz))
         self.dU = np.zeros((tsim, self.controller.nu))
 
     def run(self, set_points):

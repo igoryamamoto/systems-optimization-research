@@ -9,7 +9,7 @@ import numpy as np
 from scipy.linalg import block_diag
 import scipy.sparse as sparse
 import osqp
-from ihmpc.opom import OPOM
+from ihmpc.opom_dead_time import OPOM
 
 
 class IHMPCController(object):
@@ -18,6 +18,7 @@ class IHMPCController(object):
         self.Ts = Ts
         self.opom = OPOM(H, Ts)
         self.ny = self.opom.ny
+        self.nz = self.opom.nz
         self.nu = self.opom.nu
         self.na = self.opom.na
         self.nd = self.opom.nd
@@ -99,12 +100,11 @@ class IHMPCController(object):
         return Z, D0_n, Di_1n, Di_2n, Wn, Aeq, R1
 
     def calculate_control(self, set_point, X=None):
-        
         if X == None:
             X = self.opom.X
-        x_s = X[:2]
-        x_d = X[2:6]
-        x_i = X[6:]
+        x_s = X[:self.ny]
+        x_d = X[self.ny:self.ny+self.nd]
+        x_i = X[self.ny+self.nd:2*self.ny+self.nd]
         
         e_s = set_point - x_s
         
