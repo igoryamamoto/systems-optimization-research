@@ -1,28 +1,18 @@
-# Estágio - Ígor Yamamoto
-Repositório com os códigos dos algoritmos de controle preditivo (GPC, IHMPC), relatório de estágio e artigos-base para a implementação.
+# Systems Optimization Research
+Repo with code of the algorithms developed of predictive control systems, GPC (Generalized Predictive Control) and IHMPC (Infinite Horizon Model Predictive Control). Internship report and base article used for the implementations.
 
-## Estrutura do repositório:
-- ./requirements.txt : arquivo com as bibliotecas do python necessárias para executar os arquivos
-- ./doc : diretório com documentos (relatório de estágio, artigos-base)
-- ./img : diretório contendo imagens de experimentos
-- ./src : diretório contendo o código-fonte em python dos algoritmos
-  - /gpc : arquivos com a implementação do algoritmo GPC
-  - /ihmpc : arquivo com a implementação do algoritmo IHMPC
-  - /ethylene_oxide_gpc.py : script com experimento de controle da planta de óxido de etileno com GPC
-  - /ethylene_oxide_ihmpc.py : script com experimento de controle da planta de óxido de etileno com IHMPC
-  
-## Instruções para execução dos experimentos:
-- Utilizar Python 3
-- `git clone git@github.com:igoryamamoto/internship-code.git`
-- `cd internship-code`
-- `pip3 install -r requirements.txt`
-- `pip3 install osqp`
-- `cd src`
-- `python3 ethylene_oxide_gpc.py`
-- `python3 ethylene_oxide_ihmpc.py`
+## Repo structure:
+- ./requirements.txt : python dependencies to execute the algorithms
+- ./doc : articles and reports
+- ./img : pictures and screenshots from the experiments
+- ./src : source code for the algorithms implementation
+  - /gpc : GPC algorithm files
+  - /ihmpc : IHMPC algorithm files
+  - /ethylene_oxide_gpc.py : script with simulation with the application of GPC algorithm to control an ethylene oxide plant
+  - /ethylene_oxide_ihmpc.py : script with simulation with the application of IHMPC algorithm to control an ethylene oxide plant
 
-### Pré-requisitos de instalação:
-Para a execução do algoritmo IHMPC, o solver [OSQP](http://osqp.readthedocs.io/en/latest/installation/python.html) é utilizado. As seguintes dependências devem ser instaladas na máquina:
+### Prerequisites
+For the execution of the IHMPC algorithm, it's used the solver [OSQP](http://osqp.readthedocs.io/en/latest/installation/python.html). The following dependencies must be installed on your machine:
 - [GCC](https://gcc.gnu.org/)
 - [CMake](https://cmake.org/)
 
@@ -33,3 +23,12 @@ Para a execução do algoritmo IHMPC, o solver [OSQP](http://osqp.readthedocs.io
         && /tmp/curl-install.sh --skip-license --prefix=/usr/bin/cmake \
         && rm /tmp/curl-install.sh
   ```
+
+## Instructions to run:
+- `git clone git@github.com:igoryamamoto/internship-code.git`
+- `cd internship-code`
+- `pip3 install -r requirements.txt`
+- `pip3 install osqp`
+- `cd src`
+- `python3 ethylene_oxide_gpc.py`
+- `python3 ethylene_oxide_ihmpc.py`
